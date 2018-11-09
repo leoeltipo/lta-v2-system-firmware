@@ -40,7 +40,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 
 # The design that will be created by this Tcl script contains the following 
 # module references:
-# vec2bit_4, vec2bit_5, gpio_leds_bits, vec2bit_6, packer_header_vec2bit, sequencer_bits, spi_ldo_mux
+# vec2bit_4, vec2bit_5, gpio_leds_bits, vec2bit_6, packer_header_vec2bit, sequencer_bits, spi_ldo_mux, vec2bit_2
 
 # Please add the sources of those modules before sourcing this Tcl script.
 
@@ -130,24 +130,24 @@ set bCheckIPsPassed 1
 set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
-xilinx.com:ip:axi_intc:4.1\
 fnal.gov:user:cds_noncausal:1.0\
 xilinx.com:ip:util_ds_buf:2.1\
 xilinx.com:ip:xlconstant:1.1\
 fnal.gov:user:eth_resync:1.0\
-xilinx.com:ip:fit_timer:2.0\
 xilinx.com:ip:axi_gpio:2.0\
 xilinx.com:ip:clk_wiz:6.0\
-xilinx.com:ip:mdm:3.2\
-xilinx.com:ip:microblaze:10.0\
 fnal.gov:user:packer:1.0\
 xilinx.com:ip:blk_mem_gen:8.4\
 xilinx.com:ip:axi_bram_ctrl:4.0\
-xilinx.com:ip:proc_sys_reset:5.0\
 fnal.gov:user:sequencer:1.0\
 fnal.gov:user:smart_buffer:1.0\
 xilinx.com:ip:axi_quad_spi:3.2\
 xilinx.com:ip:axi_uartlite:2.0\
+xilinx.com:ip:axi_intc:4.1\
+xilinx.com:ip:fit_timer:2.0\
+xilinx.com:ip:mdm:3.2\
+xilinx.com:ip:microblaze:10.0\
+xilinx.com:ip:proc_sys_reset:5.0\
 xilinx.com:ip:lmb_bram_if_cntlr:4.0\
 xilinx.com:ip:lmb_v10:3.0\
 "
@@ -182,6 +182,7 @@ vec2bit_6\
 packer_header_vec2bit\
 sequencer_bits\
 spi_ldo_mux\
+vec2bit_2\
 "
 
    set list_mods_missing ""
@@ -288,6 +289,102 @@ proc create_hier_cell_ublaze_mem { parentCell nameHier } {
   # Create port connections
   connect_bd_net -net SYS_Rst_1 [get_bd_pins SYS_Rst] [get_bd_pins dlmb_bram_if_cntlr/LMB_Rst] [get_bd_pins dlmb_v10/SYS_Rst] [get_bd_pins ilmb_bram_if_cntlr/LMB_Rst] [get_bd_pins ilmb_v10/SYS_Rst]
   connect_bd_net -net microblaze_0_Clk [get_bd_pins LMB_Clk] [get_bd_pins dlmb_bram_if_cntlr/LMB_Clk] [get_bd_pins dlmb_v10/LMB_Clk] [get_bd_pins ilmb_bram_if_cntlr/LMB_Clk] [get_bd_pins ilmb_v10/LMB_Clk]
+
+  # Restore current instance
+  current_bd_instance $oldCurInst
+}
+
+# Hierarchical cell: microblaze_hie
+proc create_hier_cell_microblaze_hie { parentCell nameHier } {
+
+  variable script_folder
+
+  if { $parentCell eq "" || $nameHier eq "" } {
+     catch {common::send_msg_id "BD_TCL-102" "ERROR" "create_hier_cell_microblaze_hie() - Empty argument(s)!"}
+     return
+  }
+
+  # Get object for parentCell
+  set parentObj [get_bd_cells $parentCell]
+  if { $parentObj == "" } {
+     catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent cell <$parentCell>!"}
+     return
+  }
+
+  # Make sure parentObj is hier blk
+  set parentType [get_property TYPE $parentObj]
+  if { $parentType ne "hier" } {
+     catch {common::send_msg_id "BD_TCL-101" "ERROR" "Parent <$parentObj> has TYPE = <$parentType>. Expected to be <hier>."}
+     return
+  }
+
+  # Save current instance; Restore later
+  set oldCurInst [current_bd_instance .]
+
+  # Set parent object as current
+  current_bd_instance $parentObj
+
+  # Create cell and set as current instance
+  set hier_obj [create_bd_cell -type hier $nameHier]
+  current_bd_instance $hier_obj
+
+  # Create interface pins
+  create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M_AXI_DP
+  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi
+
+  # Create pins
+  create_bd_pin -dir I -type clk LMB_Clk
+  create_bd_pin -dir I -type rst SPARE_SW4
+  create_bd_pin -dir I dcm_locked
+  create_bd_pin -dir O -from 0 -to 0 -type rst interconnect_aresetn
+  create_bd_pin -dir O -from 0 -to 0 -type rst peripheral_aresetn
+
+  # Create instance: axi_intc, and set properties
+  set axi_intc [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc:4.1 axi_intc ]
+
+  # Create instance: fit_timer, and set properties
+  set fit_timer [ create_bd_cell -type ip -vlnv xilinx.com:ip:fit_timer:2.0 fit_timer ]
+  set_property -dict [ list \
+   CONFIG.C_NO_CLOCKS {100000} \
+ ] $fit_timer
+
+  # Create instance: mdm, and set properties
+  set mdm [ create_bd_cell -type ip -vlnv xilinx.com:ip:mdm:3.2 mdm ]
+
+  # Create instance: microblaze_0, and set properties
+  set microblaze_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:10.0 microblaze_0 ]
+  set_property -dict [ list \
+   CONFIG.C_DEBUG_ENABLED {1} \
+   CONFIG.C_D_AXI {1} \
+   CONFIG.C_D_LMB {1} \
+   CONFIG.C_I_LMB {1} \
+ ] $microblaze_0
+
+  # Create instance: reset_ctrl, and set properties
+  set reset_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset_ctrl ]
+
+  # Create instance: ublaze_mem
+  create_hier_cell_ublaze_mem $hier_obj ublaze_mem
+
+  # Create interface connections
+  connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins s_axi] [get_bd_intf_pins axi_intc/s_axi]
+  connect_bd_intf_net -intf_net axi_intc_interrupt [get_bd_intf_pins axi_intc/interrupt] [get_bd_intf_pins microblaze_0/INTERRUPT]
+  connect_bd_intf_net -intf_net microblaze_0_M_AXI_DP [get_bd_intf_pins M_AXI_DP] [get_bd_intf_pins microblaze_0/M_AXI_DP]
+  connect_bd_intf_net -intf_net microblaze_0_debug [get_bd_intf_pins mdm/MBDEBUG_0] [get_bd_intf_pins microblaze_0/DEBUG]
+  connect_bd_intf_net -intf_net microblaze_0_dlmb_1 [get_bd_intf_pins microblaze_0/DLMB] [get_bd_intf_pins ublaze_mem/DLMB]
+  connect_bd_intf_net -intf_net microblaze_0_ilmb_1 [get_bd_intf_pins microblaze_0/ILMB] [get_bd_intf_pins ublaze_mem/ILMB]
+
+  # Create port connections
+  connect_bd_net -net SPARE_SW4_1 [get_bd_pins SPARE_SW4] [get_bd_pins reset_ctrl/ext_reset_in]
+  connect_bd_net -net clk_wiz_1_locked [get_bd_pins dcm_locked] [get_bd_pins reset_ctrl/dcm_locked]
+  connect_bd_net -net fit_timer_Interrupt [get_bd_pins axi_intc/intr] [get_bd_pins fit_timer/Interrupt]
+  connect_bd_net -net mdm_1_debug_sys_rst [get_bd_pins mdm/Debug_SYS_Rst] [get_bd_pins reset_ctrl/mb_debug_sys_rst]
+  connect_bd_net -net microblaze_0_Clk [get_bd_pins LMB_Clk] [get_bd_pins axi_intc/s_axi_aclk] [get_bd_pins fit_timer/Clk] [get_bd_pins microblaze_0/Clk] [get_bd_pins reset_ctrl/slowest_sync_clk] [get_bd_pins ublaze_mem/LMB_Clk]
+  connect_bd_net -net reset_ctrl_peripheral_reset [get_bd_pins fit_timer/Rst] [get_bd_pins reset_ctrl/peripheral_reset]
+  connect_bd_net -net rst_clk_wiz_1_100M_bus_struct_reset [get_bd_pins reset_ctrl/bus_struct_reset] [get_bd_pins ublaze_mem/SYS_Rst]
+  connect_bd_net -net rst_clk_wiz_1_100M_interconnect_aresetn [get_bd_pins interconnect_aresetn] [get_bd_pins reset_ctrl/interconnect_aresetn]
+  connect_bd_net -net rst_clk_wiz_1_100M_mb_reset [get_bd_pins microblaze_0/Reset] [get_bd_pins reset_ctrl/mb_reset]
+  connect_bd_net -net rst_clk_wiz_1_100M_peripheral_aresetn [get_bd_pins peripheral_aresetn] [get_bd_pins axi_intc/s_axi_aresetn] [get_bd_pins reset_ctrl/peripheral_aresetn]
 
   # Restore current instance
   current_bd_instance $oldCurInst
@@ -420,16 +517,20 @@ proc create_root_design { parentCell } {
    CONFIG.FREQ_HZ {100000000} \
  ] $USER_CLK
   set VOLT_SW_CLK [ create_bd_port -dir O VOLT_SW_CLK ]
+  set VOLT_SW_CLR [ create_bd_port -dir O VOLT_SW_CLR ]
   set VOLT_SW_DIN [ create_bd_port -dir O VOLT_SW_DIN ]
   set VOLT_SW_DOUT [ create_bd_port -dir I VOLT_SW_DOUT ]
-
-  # Create instance: axi_intc, and set properties
-  set axi_intc [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc:4.1 axi_intc ]
+  set VOLT_SW_LEn [ create_bd_port -dir O VOLT_SW_LEn ]
+  set V_100VP_SYNC [ create_bd_port -dir O -from 0 -to 0 V_100VP_SYNC ]
+  set V_15VN_SYNC [ create_bd_port -dir O -from 0 -to 0 V_15VN_SYNC ]
+  set V_15VP_SYNC [ create_bd_port -dir O -from 0 -to 0 V_15VP_SYNC ]
+  set V_30VN_SYNC [ create_bd_port -dir O -from 0 -to 0 V_30VN_SYNC ]
+  set V_5V5P_SYNC [ create_bd_port -dir O -from 0 -to 0 V_5V5P_SYNC ]
 
   # Create instance: axi_periph, and set properties
   set axi_periph [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_periph ]
   set_property -dict [ list \
-   CONFIG.NUM_MI {19} \
+   CONFIG.NUM_MI {20} \
  ] $axi_periph
 
   # Create instance: cds_core_a, and set properties
@@ -476,12 +577,6 @@ proc create_root_design { parentCell } {
 
   # Create instance: eth, and set properties
   set eth [ create_bd_cell -type ip -vlnv fnal.gov:user:eth_resync:1.0 eth ]
-
-  # Create instance: fit_timer, and set properties
-  set fit_timer [ create_bd_cell -type ip -vlnv xilinx.com:ip:fit_timer:2.0 fit_timer ]
-  set_property -dict [ list \
-   CONFIG.C_NO_CLOCKS {100000} \
- ] $fit_timer
 
   # Create instance: gpio_dac, and set properties
   set gpio_dac [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 gpio_dac ]
@@ -555,6 +650,13 @@ proc create_root_design { parentCell } {
      return 1
    }
   
+  # Create instance: gpio_volt_sw, and set properties
+  set gpio_volt_sw [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 gpio_volt_sw ]
+  set_property -dict [ list \
+   CONFIG.C_ALL_OUTPUTS {1} \
+   CONFIG.C_GPIO_WIDTH {2} \
+ ] $gpio_volt_sw
+
   # Create instance: leds_gpio, and set properties
   set leds_gpio [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 leds_gpio ]
   set_property -dict [ list \
@@ -584,17 +686,8 @@ proc create_root_design { parentCell } {
    CONFIG.PRIM_SOURCE {Global_buffer} \
  ] $master_clock
 
-  # Create instance: mdm, and set properties
-  set mdm [ create_bd_cell -type ip -vlnv xilinx.com:ip:mdm:3.2 mdm ]
-
-  # Create instance: microblaze_0, and set properties
-  set microblaze_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:10.0 microblaze_0 ]
-  set_property -dict [ list \
-   CONFIG.C_DEBUG_ENABLED {1} \
-   CONFIG.C_D_AXI {1} \
-   CONFIG.C_D_LMB {1} \
-   CONFIG.C_I_LMB {1} \
- ] $microblaze_0
+  # Create instance: microblaze_hie
+  create_hier_cell_microblaze_hie [current_bd_instance .] microblaze_hie
 
   # Create instance: packer, and set properties
   set packer [ create_bd_cell -type ip -vlnv fnal.gov:user:packer:1.0 packer ]
@@ -639,9 +732,6 @@ proc create_root_design { parentCell } {
 
   # Create instance: ready_d, and set properties
   set ready_d [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 ready_d ]
-
-  # Create instance: reset_ctrl, and set properties
-  set reset_ctrl [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset_ctrl ]
 
   # Create instance: sequencer, and set properties
   set sequencer [ create_bd_cell -type ip -vlnv fnal.gov:user:sequencer:1.0 sequencer ]
@@ -703,40 +793,51 @@ proc create_root_design { parentCell } {
   # Create instance: uart, and set properties
   set uart [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_uartlite:2.0 uart ]
 
-  # Create instance: ublaze_mem
-  create_hier_cell_ublaze_mem [current_bd_instance .] ublaze_mem
-
+  # Create instance: vec2bit_2_0, and set properties
+  set block_name vec2bit_2
+  set block_cell_name vec2bit_2_0
+  if { [catch {set vec2bit_2_0 [create_bd_cell -type module -reference $block_name $block_cell_name] } errmsg] } {
+     catch {common::send_msg_id "BD_TCL-105" "ERROR" "Unable to add referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   } elseif { $vec2bit_2_0 eq "" } {
+     catch {common::send_msg_id "BD_TCL-106" "ERROR" "Unable to referenced block <$block_name>. Please add the files for ${block_name}'s definition into the project."}
+     return 1
+   }
+  
   # Create instance: xlconstant_0, and set properties
   set xlconstant_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_0 ]
 
   # Create instance: xlconstant_1, and set properties
   set xlconstant_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_1 ]
 
+  # Create instance: xlconstant_2, and set properties
+  set xlconstant_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_2 ]
+  set_property -dict [ list \
+   CONFIG.CONST_VAL {0} \
+ ] $xlconstant_2
+
   # Create interface connections
-  connect_bd_intf_net -intf_net axi_intc_0_interrupt [get_bd_intf_pins axi_intc/interrupt] [get_bd_intf_pins microblaze_0/INTERRUPT]
-  connect_bd_intf_net -intf_net axi_periph_M01_AXI [get_bd_intf_pins axi_intc/s_axi] [get_bd_intf_pins axi_periph/M01_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M02_AXI [get_bd_intf_pins axi_periph/M02_AXI] [get_bd_intf_pins ram_eth_ctrl/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M03_AXI [get_bd_intf_pins axi_periph/M03_AXI] [get_bd_intf_pins gpio_eth/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M04_AXI [get_bd_intf_pins axi_periph/M04_AXI] [get_bd_intf_pins spi_ldo/AXI_LITE]
-  connect_bd_intf_net -intf_net axi_periph_M05_AXI [get_bd_intf_pins axi_periph/M05_AXI] [get_bd_intf_pins gpio_ldo/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M06_AXI [get_bd_intf_pins axi_periph/M06_AXI] [get_bd_intf_pins gpio_dac/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M07_AXI [get_bd_intf_pins axi_periph/M07_AXI] [get_bd_intf_pins spi_dac/AXI_LITE]
-  connect_bd_intf_net -intf_net axi_periph_M08_AXI [get_bd_intf_pins axi_periph/M08_AXI] [get_bd_intf_pins leds_gpio/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M09_AXI [get_bd_intf_pins axi_periph/M09_AXI] [get_bd_intf_pins gpio_telemetry/S_AXI]
-  connect_bd_intf_net -intf_net axi_periph_M10_AXI [get_bd_intf_pins axi_periph/M10_AXI] [get_bd_intf_pins spi_telemetry/AXI_LITE]
-  connect_bd_intf_net -intf_net axi_periph_M11_AXI [get_bd_intf_pins axi_periph/M11_AXI] [get_bd_intf_pins spi_volt_sw/AXI_LITE]
-  connect_bd_intf_net -intf_net axi_periph_M12_AXI [get_bd_intf_pins axi_periph/M12_AXI] [get_bd_intf_pins sequencer/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M13_AXI [get_bd_intf_pins axi_periph/M13_AXI] [get_bd_intf_pins packer/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M14_AXI [get_bd_intf_pins axi_periph/M14_AXI] [get_bd_intf_pins cds_core_d/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M15_AXI [get_bd_intf_pins axi_periph/M15_AXI] [get_bd_intf_pins cds_core_b/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M16_AXI [get_bd_intf_pins axi_periph/M16_AXI] [get_bd_intf_pins cds_core_a/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M17_AXI [get_bd_intf_pins axi_periph/M17_AXI] [get_bd_intf_pins cds_core_c/s00_axi]
-  connect_bd_intf_net -intf_net axi_periph_M18_AXI [get_bd_intf_pins axi_periph/M18_AXI] [get_bd_intf_pins smart_buffer_0/s00_axi]
-  connect_bd_intf_net -intf_net microblaze_0_M_AXI_DP [get_bd_intf_pins axi_periph/S00_AXI] [get_bd_intf_pins microblaze_0/M_AXI_DP]
-  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M00_AXI [get_bd_intf_pins axi_periph/M00_AXI] [get_bd_intf_pins uart/S_AXI]
-  connect_bd_intf_net -intf_net microblaze_0_debug [get_bd_intf_pins mdm/MBDEBUG_0] [get_bd_intf_pins microblaze_0/DEBUG]
-  connect_bd_intf_net -intf_net microblaze_0_dlmb_1 [get_bd_intf_pins microblaze_0/DLMB] [get_bd_intf_pins ublaze_mem/DLMB]
-  connect_bd_intf_net -intf_net microblaze_0_ilmb_1 [get_bd_intf_pins microblaze_0/ILMB] [get_bd_intf_pins ublaze_mem/ILMB]
+  connect_bd_intf_net -intf_net axi_periph_M00_AXI [get_bd_intf_pins axi_periph/M00_AXI] [get_bd_intf_pins uart/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M01_AXI [get_bd_intf_pins axi_periph/M01_AXI] [get_bd_intf_pins ram_eth_ctrl/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M02_AXI [get_bd_intf_pins axi_periph/M02_AXI] [get_bd_intf_pins gpio_eth/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M03_AXI [get_bd_intf_pins axi_periph/M03_AXI] [get_bd_intf_pins spi_ldo/AXI_LITE]
+  connect_bd_intf_net -intf_net axi_periph_M04_AXI [get_bd_intf_pins axi_periph/M04_AXI] [get_bd_intf_pins gpio_ldo/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M05_AXI [get_bd_intf_pins axi_periph/M05_AXI] [get_bd_intf_pins gpio_dac/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M06_AXI [get_bd_intf_pins axi_periph/M06_AXI] [get_bd_intf_pins spi_dac/AXI_LITE]
+  connect_bd_intf_net -intf_net axi_periph_M07_AXI [get_bd_intf_pins axi_periph/M07_AXI] [get_bd_intf_pins leds_gpio/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M08_AXI [get_bd_intf_pins axi_periph/M08_AXI] [get_bd_intf_pins gpio_telemetry/S_AXI]
+  connect_bd_intf_net -intf_net axi_periph_M09_AXI [get_bd_intf_pins axi_periph/M09_AXI] [get_bd_intf_pins spi_telemetry/AXI_LITE]
+  connect_bd_intf_net -intf_net axi_periph_M10_AXI [get_bd_intf_pins axi_periph/M10_AXI] [get_bd_intf_pins spi_volt_sw/AXI_LITE]
+  connect_bd_intf_net -intf_net axi_periph_M11_AXI [get_bd_intf_pins axi_periph/M11_AXI] [get_bd_intf_pins sequencer/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M12_AXI [get_bd_intf_pins axi_periph/M12_AXI] [get_bd_intf_pins packer/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M13_AXI [get_bd_intf_pins axi_periph/M13_AXI] [get_bd_intf_pins cds_core_d/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M14_AXI [get_bd_intf_pins axi_periph/M14_AXI] [get_bd_intf_pins cds_core_b/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M15_AXI [get_bd_intf_pins axi_periph/M15_AXI] [get_bd_intf_pins cds_core_a/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M16_AXI [get_bd_intf_pins axi_periph/M16_AXI] [get_bd_intf_pins cds_core_c/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M17_AXI [get_bd_intf_pins axi_periph/M17_AXI] [get_bd_intf_pins smart_buffer_0/s00_axi]
+  connect_bd_intf_net -intf_net axi_periph_M18_AXI [get_bd_intf_pins axi_periph/M18_AXI] [get_bd_intf_pins microblaze_hie/s_axi]
+  connect_bd_intf_net -intf_net axi_periph_M19_AXI [get_bd_intf_pins axi_periph/M19_AXI] [get_bd_intf_pins gpio_volt_sw/S_AXI]
+  connect_bd_intf_net -intf_net microblaze_0_M_AXI_DP [get_bd_intf_pins axi_periph/S00_AXI] [get_bd_intf_pins microblaze_hie/M_AXI_DP]
   connect_bd_intf_net -intf_net ram_eth_ctrl_BRAM_PORTA [get_bd_intf_pins ram_eth/BRAM_PORTA] [get_bd_intf_pins ram_eth_ctrl/BRAM_PORTA]
 
   # Create port connections
@@ -763,7 +864,7 @@ proc create_root_design { parentCell } {
   connect_bd_net -net Net5 [get_bd_pins cds_core_c/din] [get_bd_pins data_c/dout] [get_bd_pins packer/rdata_c] [get_bd_pins smart_buffer_0/data_in_c]
   connect_bd_net -net Net6 [get_bd_pins cds_core_d/din_ready] [get_bd_pins packer/rready_d] [get_bd_pins ready_d/dout] [get_bd_pins smart_buffer_0/ready_in_d]
   connect_bd_net -net Net7 [get_bd_pins cds_core_d/din] [get_bd_pins data_d/dout] [get_bd_pins packer/rdata_d] [get_bd_pins smart_buffer_0/data_in_d]
-  connect_bd_net -net SPARE_SW4_1 [get_bd_ports SPARE_SW4] [get_bd_pins eth/rst] [get_bd_pins master_clock/reset] [get_bd_pins ram_eth/rstb] [get_bd_pins reset_ctrl/ext_reset_in]
+  connect_bd_net -net SPARE_SW4_1 [get_bd_ports SPARE_SW4] [get_bd_pins eth/rst] [get_bd_pins master_clock/reset] [get_bd_pins microblaze_hie/SPARE_SW4] [get_bd_pins ram_eth/rstb]
   connect_bd_net -net TEL_DOUT_1 [get_bd_ports TEL_DOUT] [get_bd_pins spi_telemetry/io1_i]
   connect_bd_net -net USB_UART_TX_1 [get_bd_ports USB_UART_TX] [get_bd_pins uart/rx]
   connect_bd_net -net USER_CLK_1 [get_bd_ports USER_CLK] [get_bd_pins clk_buf/BUFG_I]
@@ -777,7 +878,7 @@ proc create_root_design { parentCell } {
   connect_bd_net -net cds_core_c_dout_ready [get_bd_pins cds_core_c/dout_ready] [get_bd_pins packer/pready_c]
   connect_bd_net -net cds_core_d_dout [get_bd_pins cds_core_d/dout] [get_bd_pins packer/pdata_d]
   connect_bd_net -net cds_core_d_dout_ready [get_bd_pins cds_core_d/dout_ready] [get_bd_pins packer/pready_d]
-  connect_bd_net -net clk_wiz_1_locked [get_bd_pins master_clock/locked] [get_bd_pins reset_ctrl/dcm_locked]
+  connect_bd_net -net clk_wiz_1_locked [get_bd_pins master_clock/locked] [get_bd_pins microblaze_hie/dcm_locked]
   connect_bd_net -net eth_addr [get_bd_pins eth/addr] [get_bd_pins ram_eth/addrb]
   connect_bd_net -net eth_clk_125_out [get_bd_pins eth/clk_125_out] [get_bd_pins ram_eth/clkb]
   connect_bd_net -net eth_data_out [get_bd_pins eth/data_out] [get_bd_pins ram_eth/dinb]
@@ -793,7 +894,6 @@ proc create_root_design { parentCell } {
   connect_bd_net -net eth_resync_0_ENET_TXEN [get_bd_ports ENET_TXEN] [get_bd_pins eth/ENET_TXEN]
   connect_bd_net -net eth_resync_0_ENET_TXER [get_bd_ports ENET_TXER] [get_bd_pins eth/ENET_TXER]
   connect_bd_net -net eth_wren [get_bd_pins eth/wren] [get_bd_pins ram_eth/web]
-  connect_bd_net -net fit_timer_0_Interrupt [get_bd_pins axi_intc/intr] [get_bd_pins fit_timer/Interrupt]
   connect_bd_net -net gpio_bits_out0 [get_bd_ports CCD_VDRAIN_EN] [get_bd_pins gpio_ldo_bits/out0]
   connect_bd_net -net gpio_bits_out1 [get_bd_ports CCD_VDD_EN] [get_bd_pins gpio_ldo_bits/out1]
   connect_bd_net -net gpio_bits_out2 [get_bd_ports CCD_VR_EN] [get_bd_pins gpio_ldo_bits/out2]
@@ -819,19 +919,16 @@ proc create_root_design { parentCell } {
   connect_bd_net -net gpio_telemetry_bits_out4 [get_bd_ports TEL_MUXA1] [get_bd_pins gpio_telemetry_bits/out4]
   connect_bd_net -net gpio_telemetry_bits_out5 [get_bd_ports TEL_MUXA2] [get_bd_pins gpio_telemetry_bits/out5]
   connect_bd_net -net gpio_telemetry_gpio_io_o [get_bd_pins gpio_telemetry/gpio_io_o] [get_bd_pins gpio_telemetry_bits/vec_in]
+  connect_bd_net -net gpio_volt_sw_gpio_io_o [get_bd_pins gpio_volt_sw/gpio_io_o] [get_bd_pins vec2bit_2_0/vec_in]
   connect_bd_net -net leds_gpio_gpio_io_o [get_bd_pins gpio_leds_bits/vec_in] [get_bd_pins leds_gpio/gpio_io_o]
   connect_bd_net -net master_clock_clk_out2 [get_bd_pins master_clock/clk_out2] [get_bd_pins spi_dac/ext_spi_clk] [get_bd_pins spi_ldo/ext_spi_clk] [get_bd_pins spi_telemetry/ext_spi_clk] [get_bd_pins spi_volt_sw/ext_spi_clk]
-  connect_bd_net -net mdm_1_debug_sys_rst [get_bd_pins mdm/Debug_SYS_Rst] [get_bd_pins reset_ctrl/mb_debug_sys_rst]
-  connect_bd_net -net microblaze_0_Clk [get_bd_pins axi_intc/s_axi_aclk] [get_bd_pins axi_periph/ACLK] [get_bd_pins axi_periph/M00_ACLK] [get_bd_pins axi_periph/M01_ACLK] [get_bd_pins axi_periph/M02_ACLK] [get_bd_pins axi_periph/M03_ACLK] [get_bd_pins axi_periph/M04_ACLK] [get_bd_pins axi_periph/M05_ACLK] [get_bd_pins axi_periph/M06_ACLK] [get_bd_pins axi_periph/M07_ACLK] [get_bd_pins axi_periph/M08_ACLK] [get_bd_pins axi_periph/M09_ACLK] [get_bd_pins axi_periph/M10_ACLK] [get_bd_pins axi_periph/M11_ACLK] [get_bd_pins axi_periph/M12_ACLK] [get_bd_pins axi_periph/M13_ACLK] [get_bd_pins axi_periph/M14_ACLK] [get_bd_pins axi_periph/M15_ACLK] [get_bd_pins axi_periph/M16_ACLK] [get_bd_pins axi_periph/M17_ACLK] [get_bd_pins axi_periph/M18_ACLK] [get_bd_pins axi_periph/S00_ACLK] [get_bd_pins cds_core_a/s00_axi_aclk] [get_bd_pins cds_core_b/s00_axi_aclk] [get_bd_pins cds_core_c/s00_axi_aclk] [get_bd_pins cds_core_d/s00_axi_aclk] [get_bd_pins fit_timer/Clk] [get_bd_pins gpio_dac/s_axi_aclk] [get_bd_pins gpio_eth/s_axi_aclk] [get_bd_pins gpio_ldo/s_axi_aclk] [get_bd_pins gpio_telemetry/s_axi_aclk] [get_bd_pins leds_gpio/s_axi_aclk] [get_bd_pins master_clock/clk_out1] [get_bd_pins microblaze_0/Clk] [get_bd_pins packer/s00_axi_aclk] [get_bd_pins ram_eth_ctrl/s_axi_aclk] [get_bd_pins reset_ctrl/slowest_sync_clk] [get_bd_pins sequencer/s00_axi_aclk] [get_bd_pins smart_buffer_0/s00_axi_aclk] [get_bd_pins spi_dac/s_axi_aclk] [get_bd_pins spi_ldo/s_axi_aclk] [get_bd_pins spi_telemetry/s_axi_aclk] [get_bd_pins spi_volt_sw/s_axi_aclk] [get_bd_pins uart/s_axi_aclk] [get_bd_pins ublaze_mem/LMB_Clk]
+  connect_bd_net -net microblaze_0_Clk [get_bd_pins axi_periph/ACLK] [get_bd_pins axi_periph/M00_ACLK] [get_bd_pins axi_periph/M01_ACLK] [get_bd_pins axi_periph/M02_ACLK] [get_bd_pins axi_periph/M03_ACLK] [get_bd_pins axi_periph/M04_ACLK] [get_bd_pins axi_periph/M05_ACLK] [get_bd_pins axi_periph/M06_ACLK] [get_bd_pins axi_periph/M07_ACLK] [get_bd_pins axi_periph/M08_ACLK] [get_bd_pins axi_periph/M09_ACLK] [get_bd_pins axi_periph/M10_ACLK] [get_bd_pins axi_periph/M11_ACLK] [get_bd_pins axi_periph/M12_ACLK] [get_bd_pins axi_periph/M13_ACLK] [get_bd_pins axi_periph/M14_ACLK] [get_bd_pins axi_periph/M15_ACLK] [get_bd_pins axi_periph/M16_ACLK] [get_bd_pins axi_periph/M17_ACLK] [get_bd_pins axi_periph/M18_ACLK] [get_bd_pins axi_periph/M19_ACLK] [get_bd_pins axi_periph/S00_ACLK] [get_bd_pins cds_core_a/s00_axi_aclk] [get_bd_pins cds_core_b/s00_axi_aclk] [get_bd_pins cds_core_c/s00_axi_aclk] [get_bd_pins cds_core_d/s00_axi_aclk] [get_bd_pins gpio_dac/s_axi_aclk] [get_bd_pins gpio_eth/s_axi_aclk] [get_bd_pins gpio_ldo/s_axi_aclk] [get_bd_pins gpio_telemetry/s_axi_aclk] [get_bd_pins gpio_volt_sw/s_axi_aclk] [get_bd_pins leds_gpio/s_axi_aclk] [get_bd_pins master_clock/clk_out1] [get_bd_pins microblaze_hie/LMB_Clk] [get_bd_pins packer/s00_axi_aclk] [get_bd_pins ram_eth_ctrl/s_axi_aclk] [get_bd_pins sequencer/s00_axi_aclk] [get_bd_pins smart_buffer_0/s00_axi_aclk] [get_bd_pins spi_dac/s_axi_aclk] [get_bd_pins spi_ldo/s_axi_aclk] [get_bd_pins spi_telemetry/s_axi_aclk] [get_bd_pins spi_volt_sw/s_axi_aclk] [get_bd_pins uart/s_axi_aclk]
   connect_bd_net -net packer_dout [get_bd_pins eth/b_data] [get_bd_pins packer/dout]
   connect_bd_net -net packer_dready [get_bd_pins eth/b_we] [get_bd_pins packer/dready]
   connect_bd_net -net packer_header_vec2bit_0_dout [get_bd_pins packer/header] [get_bd_pins packer_header/dout] [get_bd_pins smart_buffer_0/header]
   connect_bd_net -net ram_eth_doutb [get_bd_pins eth/data_in] [get_bd_pins ram_eth/doutb]
-  connect_bd_net -net reset_ctrl_peripheral_reset [get_bd_pins fit_timer/Rst] [get_bd_pins reset_ctrl/peripheral_reset]
-  connect_bd_net -net rst_clk_wiz_1_100M_bus_struct_reset [get_bd_pins reset_ctrl/bus_struct_reset] [get_bd_pins ublaze_mem/SYS_Rst]
-  connect_bd_net -net rst_clk_wiz_1_100M_interconnect_aresetn [get_bd_pins axi_periph/ARESETN] [get_bd_pins reset_ctrl/interconnect_aresetn]
-  connect_bd_net -net rst_clk_wiz_1_100M_mb_reset [get_bd_pins microblaze_0/Reset] [get_bd_pins reset_ctrl/mb_reset]
-  connect_bd_net -net rst_clk_wiz_1_100M_peripheral_aresetn [get_bd_pins axi_intc/s_axi_aresetn] [get_bd_pins axi_periph/M00_ARESETN] [get_bd_pins axi_periph/M01_ARESETN] [get_bd_pins axi_periph/M02_ARESETN] [get_bd_pins axi_periph/M03_ARESETN] [get_bd_pins axi_periph/M04_ARESETN] [get_bd_pins axi_periph/M05_ARESETN] [get_bd_pins axi_periph/M06_ARESETN] [get_bd_pins axi_periph/M07_ARESETN] [get_bd_pins axi_periph/M08_ARESETN] [get_bd_pins axi_periph/M09_ARESETN] [get_bd_pins axi_periph/M10_ARESETN] [get_bd_pins axi_periph/M11_ARESETN] [get_bd_pins axi_periph/M12_ARESETN] [get_bd_pins axi_periph/M13_ARESETN] [get_bd_pins axi_periph/M14_ARESETN] [get_bd_pins axi_periph/M15_ARESETN] [get_bd_pins axi_periph/M16_ARESETN] [get_bd_pins axi_periph/M17_ARESETN] [get_bd_pins axi_periph/M18_ARESETN] [get_bd_pins axi_periph/S00_ARESETN] [get_bd_pins cds_core_a/s00_axi_aresetn] [get_bd_pins cds_core_b/s00_axi_aresetn] [get_bd_pins cds_core_c/s00_axi_aresetn] [get_bd_pins cds_core_d/s00_axi_aresetn] [get_bd_pins gpio_dac/s_axi_aresetn] [get_bd_pins gpio_eth/s_axi_aresetn] [get_bd_pins gpio_ldo/s_axi_aresetn] [get_bd_pins gpio_telemetry/s_axi_aresetn] [get_bd_pins leds_gpio/s_axi_aresetn] [get_bd_pins packer/s00_axi_aresetn] [get_bd_pins ram_eth_ctrl/s_axi_aresetn] [get_bd_pins reset_ctrl/peripheral_aresetn] [get_bd_pins sequencer/s00_axi_aresetn] [get_bd_pins smart_buffer_0/s00_axi_aresetn] [get_bd_pins spi_dac/s_axi_aresetn] [get_bd_pins spi_ldo/s_axi_aresetn] [get_bd_pins spi_telemetry/s_axi_aresetn] [get_bd_pins spi_volt_sw/s_axi_aresetn] [get_bd_pins uart/s_axi_aresetn]
+  connect_bd_net -net rst_clk_wiz_1_100M_interconnect_aresetn [get_bd_pins axi_periph/ARESETN] [get_bd_pins microblaze_hie/interconnect_aresetn]
+  connect_bd_net -net rst_clk_wiz_1_100M_peripheral_aresetn [get_bd_pins axi_periph/M00_ARESETN] [get_bd_pins axi_periph/M01_ARESETN] [get_bd_pins axi_periph/M02_ARESETN] [get_bd_pins axi_periph/M03_ARESETN] [get_bd_pins axi_periph/M04_ARESETN] [get_bd_pins axi_periph/M05_ARESETN] [get_bd_pins axi_periph/M06_ARESETN] [get_bd_pins axi_periph/M07_ARESETN] [get_bd_pins axi_periph/M08_ARESETN] [get_bd_pins axi_periph/M09_ARESETN] [get_bd_pins axi_periph/M10_ARESETN] [get_bd_pins axi_periph/M11_ARESETN] [get_bd_pins axi_periph/M12_ARESETN] [get_bd_pins axi_periph/M13_ARESETN] [get_bd_pins axi_periph/M14_ARESETN] [get_bd_pins axi_periph/M15_ARESETN] [get_bd_pins axi_periph/M16_ARESETN] [get_bd_pins axi_periph/M17_ARESETN] [get_bd_pins axi_periph/M18_ARESETN] [get_bd_pins axi_periph/M19_ARESETN] [get_bd_pins axi_periph/S00_ARESETN] [get_bd_pins cds_core_a/s00_axi_aresetn] [get_bd_pins cds_core_b/s00_axi_aresetn] [get_bd_pins cds_core_c/s00_axi_aresetn] [get_bd_pins cds_core_d/s00_axi_aresetn] [get_bd_pins gpio_dac/s_axi_aresetn] [get_bd_pins gpio_eth/s_axi_aresetn] [get_bd_pins gpio_ldo/s_axi_aresetn] [get_bd_pins gpio_telemetry/s_axi_aresetn] [get_bd_pins gpio_volt_sw/s_axi_aresetn] [get_bd_pins leds_gpio/s_axi_aresetn] [get_bd_pins microblaze_hie/peripheral_aresetn] [get_bd_pins packer/s00_axi_aresetn] [get_bd_pins ram_eth_ctrl/s_axi_aresetn] [get_bd_pins sequencer/s00_axi_aresetn] [get_bd_pins smart_buffer_0/s00_axi_aresetn] [get_bd_pins spi_dac/s_axi_aresetn] [get_bd_pins spi_ldo/s_axi_aresetn] [get_bd_pins spi_telemetry/s_axi_aresetn] [get_bd_pins spi_volt_sw/s_axi_aresetn] [get_bd_pins uart/s_axi_aresetn]
   connect_bd_net -net sequencer_bits_out0 [get_bd_ports TGL_DGA] [get_bd_pins sequencer_bits/out0]
   connect_bd_net -net sequencer_bits_out1 [get_bd_ports TGL_DGB] [get_bd_pins sequencer_bits/out1]
   connect_bd_net -net sequencer_bits_out2 [get_bd_ports TGL_H1A] [get_bd_pins sequencer_bits/out2]
@@ -878,336 +975,341 @@ proc create_root_design { parentCell } {
   connect_bd_net -net spi_volt_sw_io0_o [get_bd_ports VOLT_SW_DIN] [get_bd_pins spi_volt_sw/io0_o]
   connect_bd_net -net spi_volt_sw_sck_o [get_bd_ports VOLT_SW_CLK] [get_bd_pins spi_volt_sw/sck_o]
   connect_bd_net -net util_ds_buf_0_BUFG_O [get_bd_pins clk_buf/BUFG_O] [get_bd_pins master_clock/clk_in1]
+  connect_bd_net -net vec2bit_2_0_out0 [get_bd_ports VOLT_SW_CLR] [get_bd_pins vec2bit_2_0/out0]
+  connect_bd_net -net vec2bit_2_0_out1 [get_bd_ports VOLT_SW_LEn] [get_bd_pins vec2bit_2_0/out1]
   connect_bd_net -net xlconstant_0_dout [get_bd_pins ram_eth/enb] [get_bd_pins xlconstant_0/dout]
   connect_bd_net -net xlconstant_1_dout [get_bd_pins packer/dack] [get_bd_pins xlconstant_1/dout]
+  connect_bd_net -net xlconstant_2_dout [get_bd_ports V_100VP_SYNC] [get_bd_ports V_15VN_SYNC] [get_bd_ports V_15VP_SYNC] [get_bd_ports V_30VN_SYNC] [get_bd_ports V_5V5P_SYNC] [get_bd_pins xlconstant_2/dout]
 
   # Create address segments
-  create_bd_addr_seg -range 0x00010000 -offset 0x41200000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs axi_intc/S_AXI/Reg] SEG_axi_intc_0_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A10000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs spi_dac/AXI_LITE/Reg] SEG_axi_quad_spi_0_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A20000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs spi_telemetry/AXI_LITE/Reg] SEG_axi_quad_spi_0_Reg1
-  create_bd_addr_seg -range 0x00010000 -offset 0x40600000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs uart/S_AXI/Reg] SEG_axi_uartlite_0_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A80000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs cds_core_a/s00_axi/reg0] SEG_cds_core_a_reg0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A70000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs cds_core_b/s00_axi/reg0] SEG_cds_core_b_reg0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A90000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs cds_core_c/s00_axi/reg0] SEG_cds_core_c_reg0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A60000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs cds_core_d/s00_axi/reg0] SEG_cds_core_d_reg0
-  create_bd_addr_seg -range 0x00040000 -offset 0x00000000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs ublaze_mem/dlmb_bram_if_cntlr/SLMB/Mem] SEG_dlmb_bram_if_cntlr_Mem
-  create_bd_addr_seg -range 0x00010000 -offset 0x40020000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs gpio_dac/S_AXI/Reg] SEG_gpio_dac_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40000000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs gpio_eth/S_AXI/Reg] SEG_gpio_eth_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40010000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs gpio_ldo/S_AXI/Reg] SEG_gpio_ldo_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x40040000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs gpio_telemetry/S_AXI/Reg] SEG_gpio_telemetry_Reg
-  create_bd_addr_seg -range 0x00040000 -offset 0x00000000 [get_bd_addr_spaces microblaze_0/Instruction] [get_bd_addr_segs ublaze_mem/ilmb_bram_if_cntlr/SLMB/Mem] SEG_ilmb_bram_if_cntlr_Mem
-  create_bd_addr_seg -range 0x00010000 -offset 0x40030000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs leds_gpio/S_AXI/Reg] SEG_leds_gpio_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A50000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs packer/s00_axi/reg0] SEG_packer_reg0
-  create_bd_addr_seg -range 0x00002000 -offset 0xC0000000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs ram_eth_ctrl/S_AXI/Mem0] SEG_ram_eth_ctrl_Mem0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A40000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs sequencer/s00_axi/reg0] SEG_sequencer_0_reg0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44AA0000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs smart_buffer_0/s00_axi/reg0] SEG_smart_buffer_0_reg0
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A00000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs spi_ldo/AXI_LITE/Reg] SEG_spi_ldo_Reg
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A30000 [get_bd_addr_spaces microblaze_0/Data] [get_bd_addr_segs spi_volt_sw/AXI_LITE/Reg] SEG_spi_volt_sw_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x40050000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs gpio_volt_sw/S_AXI/Reg] SEG_axi_gpio_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x41200000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs microblaze_hie/axi_intc/S_AXI/Reg] SEG_axi_intc_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A10000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs spi_dac/AXI_LITE/Reg] SEG_axi_quad_spi_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A20000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs spi_telemetry/AXI_LITE/Reg] SEG_axi_quad_spi_0_Reg1
+  create_bd_addr_seg -range 0x00010000 -offset 0x40600000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs uart/S_AXI/Reg] SEG_axi_uartlite_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A80000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs cds_core_a/s00_axi/reg0] SEG_cds_core_a_reg0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A70000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs cds_core_b/s00_axi/reg0] SEG_cds_core_b_reg0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A90000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs cds_core_c/s00_axi/reg0] SEG_cds_core_c_reg0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A60000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs cds_core_d/s00_axi/reg0] SEG_cds_core_d_reg0
+  create_bd_addr_seg -range 0x00040000 -offset 0x00000000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs microblaze_hie/ublaze_mem/dlmb_bram_if_cntlr/SLMB/Mem] SEG_dlmb_bram_if_cntlr_Mem
+  create_bd_addr_seg -range 0x00010000 -offset 0x40020000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs gpio_dac/S_AXI/Reg] SEG_gpio_dac_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x40000000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs gpio_eth/S_AXI/Reg] SEG_gpio_eth_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x40010000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs gpio_ldo/S_AXI/Reg] SEG_gpio_ldo_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x40040000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs gpio_telemetry/S_AXI/Reg] SEG_gpio_telemetry_Reg
+  create_bd_addr_seg -range 0x00040000 -offset 0x00000000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Instruction] [get_bd_addr_segs microblaze_hie/ublaze_mem/ilmb_bram_if_cntlr/SLMB/Mem] SEG_ilmb_bram_if_cntlr_Mem
+  create_bd_addr_seg -range 0x00010000 -offset 0x40030000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs leds_gpio/S_AXI/Reg] SEG_leds_gpio_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A50000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs packer/s00_axi/reg0] SEG_packer_reg0
+  create_bd_addr_seg -range 0x00002000 -offset 0xC0000000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs ram_eth_ctrl/S_AXI/Mem0] SEG_ram_eth_ctrl_Mem0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A40000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs sequencer/s00_axi/reg0] SEG_sequencer_0_reg0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44AA0000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs smart_buffer_0/s00_axi/reg0] SEG_smart_buffer_0_reg0
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A00000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs spi_ldo/AXI_LITE/Reg] SEG_spi_ldo_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0x44A30000 [get_bd_addr_spaces microblaze_hie/microblaze_0/Data] [get_bd_addr_segs spi_volt_sw/AXI_LITE/Reg] SEG_spi_volt_sw_Reg
 
   # Perform GUI Layout
   regenerate_bd_layout -layout_string {
    ExpandedHierarchyInLayout: "",
    guistr: "# # String gsaved with Nlview 6.8.5  2018-01-30 bk=1.4354 VDI=40 GEI=35 GUI=JA:1.6 non-TLS
 #  -string -flagsOSRD
-preplace port TGL_H1B -pg 1 -y -680 -defaultsOSRD
-preplace port CCD_VDD_DIGPOT_SDO -pg 1 -y 1770 -defaultsOSRD -right
-preplace port TEL_MUXA0 -pg 1 -y 3160 -defaultsOSRD
-preplace port TEL_MUXA1 -pg 1 -y 3180 -defaultsOSRD
-preplace port SPARE_SW4 -pg 1 -y 190 -defaultsOSRD
-preplace port USB_UART_TX -pg 1 -y 370 -defaultsOSRD -right
-preplace port TEL_MUXA2 -pg 1 -y 3200 -defaultsOSRD
-preplace port CCD_VR_DIGPOT_SDO -pg 1 -y 1790 -defaultsOSRD -right
-preplace port CCD_VDD_EN -pg 1 -y 1950 -defaultsOSRD
-preplace port CCD_VR_DIGPOT_SYNCn -pg 1 -y 1640 -defaultsOSRD
-preplace port TGL_DGA -pg 1 -y -740 -defaultsOSRD
-preplace port DIGPOT_DIN -pg 1 -y 1490 -defaultsOSRD
-preplace port TGL_TGA -pg 1 -y -480 -defaultsOSRD
-preplace port TGL_DGB -pg 1 -y -720 -defaultsOSRD
-preplace port DIGPOT_SCLK -pg 1 -y 1510 -defaultsOSRD
-preplace port DAC_SDI -pg 1 -y 2560 -defaultsOSRD
-preplace port TGL_TGB -pg 1 -y -460 -defaultsOSRD
-preplace port TGL_OGA -pg 1 -y -600 -defaultsOSRD
-preplace port TGL_OGB -pg 1 -y -580 -defaultsOSRD
-preplace port DAC_CLRn -pg 1 -y 2260 -defaultsOSRD
-preplace port ENET_RXDV -pg 1 -y 930 -defaultsOSRD
-preplace port USB_UART_RX -pg 1 -y 390 -defaultsOSRD
-preplace port CCD_VR_EN -pg 1 -y 1970 -defaultsOSRD
-preplace port ENET_RX0 -pg 1 -y 910 -defaultsOSRD
-preplace port TGL_RGA -pg 1 -y -560 -defaultsOSRD
-preplace port DAC_SDO -pg 1 -y 2580 -defaultsOSRD -right
-preplace port CCD_VDD_DIGPOT_SYNCn -pg 1 -y 1620 -defaultsOSRD
-preplace port ENET_RX1 -pg 1 -y 890 -defaultsOSRD
-preplace port TGL_RGB -pg 1 -y -540 -defaultsOSRD
-preplace port ENET_RX2 -pg 1 -y 870 -defaultsOSRD
-preplace port TGL_V2C -pg 1 -y -400 -defaultsOSRD
-preplace port TGL_H2C -pg 1 -y -660 -defaultsOSRD
-preplace port VOLT_SW_CLK -pg 1 -y 3740 -defaultsOSRD
-preplace port ENET_RX3 -pg 1 -y 850 -defaultsOSRD
-preplace port TGL_SWA -pg 1 -y -520 -defaultsOSRD
-preplace port ENET_RX4 -pg 1 -y 830 -defaultsOSRD
-preplace port TGL_SWB -pg 1 -y -500 -defaultsOSRD
-preplace port ENET_RX5 -pg 1 -y 810 -defaultsOSRD
-preplace port ENET_RXCLK -pg 1 -y 750 -defaultsOSRD
-preplace port TEL_SCLK -pg 1 -y 3500 -defaultsOSRD
-preplace port TEL_MUXEN0 -pg 1 -y 3100 -defaultsOSRD
-preplace port ENET_RX6 -pg 1 -y 790 -defaultsOSRD
-preplace port DIGPOT_RSTn -pg 1 -y 2010 -defaultsOSRD
-preplace port TEL_MUXEN1 -pg 1 -y 3120 -defaultsOSRD
-preplace port TEL_MUXEN2 -pg 1 -y 3140 -defaultsOSRD
-preplace port ENET_RX7 -pg 1 -y 770 -defaultsOSRD
-preplace port ENET_TXEN -pg 1 -y 930 -defaultsOSRD
-preplace port VOLT_SW_DIN -pg 1 -y 3700 -defaultsOSRD
-preplace port ENET_TXER -pg 1 -y 750 -defaultsOSRD
-preplace port CCD_VSUB_EN -pg 1 -y 1990 -defaultsOSRD
-preplace port LED0 -pg 1 -y 2800 -defaultsOSRD
-preplace port LED1 -pg 1 -y 2820 -defaultsOSRD
-preplace port LED2 -pg 1 -y 2840 -defaultsOSRD
-preplace port CCD_VSUB_DIGPOT_SYNCn -pg 1 -y 1660 -defaultsOSRD
-preplace port LED3 -pg 1 -y 2860 -defaultsOSRD
-preplace port TEL_DIN -pg 1 -y 3460 -defaultsOSRD
-preplace port TEL_DOUT -pg 1 -y 3480 -defaultsOSRD -right
-preplace port LED4 -pg 1 -y 2880 -defaultsOSRD
-preplace port TGL_V3A -pg 1 -y -380 -defaultsOSRD
-preplace port TGL_H3A -pg 1 -y -640 -defaultsOSRD
-preplace port CCD_VDRAIN_DIGPOT_SDO -pg 1 -y 1750 -defaultsOSRD -right
-preplace port LED5 -pg 1 -y 2900 -defaultsOSRD
-preplace port TGL_V3B -pg 1 -y -360 -defaultsOSRD
-preplace port TGL_H3B -pg 1 -y -620 -defaultsOSRD
-preplace port VOLT_SW_DOUT -pg 1 -y 3720 -defaultsOSRD -right
-preplace port DAC_SCLK -pg 1 -y 2600 -defaultsOSRD
-preplace port ENET_TX0 -pg 1 -y 910 -defaultsOSRD
-preplace port USER_CLK -pg 1 -y 250 -defaultsOSRD
-preplace port ENET_GTXCLK -pg 1 -y 730 -defaultsOSRD
-preplace port ENET_TX1 -pg 1 -y 890 -defaultsOSRD
-preplace port ENET_TX2 -pg 1 -y 950 -defaultsOSRD
-preplace port CCD_VDRAIN_DIGPOT_SYNCn -pg 1 -y 1600 -defaultsOSRD
-preplace port ENET_TX3 -pg 1 -y 850 -defaultsOSRD
-preplace port ENET_TX4 -pg 1 -y 830 -defaultsOSRD
-preplace port DAC_SW_EN -pg 1 -y 2300 -defaultsOSRD
-preplace port ENET_TX5 -pg 1 -y 710 -defaultsOSRD
-preplace port ENET_TX6 -pg 1 -y 690 -defaultsOSRD
-preplace port TGL_V1A -pg 1 -y -440 -defaultsOSRD
-preplace port ENET_TX7 -pg 1 -y 870 -defaultsOSRD
-preplace port CCD_VSUB_DIGPOT_SDO -pg 1 -y 1810 -defaultsOSRD -right
-preplace port CCD_VDRAIN_EN -pg 1 -y 1930 -defaultsOSRD
-preplace port TGL_V1B -pg 1 -y -420 -defaultsOSRD
-preplace port DAC_LDACn -pg 1 -y 2240 -defaultsOSRD
-preplace port DAC_RESETn -pg 1 -y 2280 -defaultsOSRD
-preplace port TGL_H1A -pg 1 -y -700 -defaultsOSRD
-preplace portBus TEL_CSn -pg 1 -y 3520 -defaultsOSRD
-preplace portBus DAC_SYNCn -pg 1 -y 2620 -defaultsOSRD
-preplace inst ready_c -pg 1 -lvl 5 -y -1920 -defaultsOSRD
-preplace inst packer_header -pg 1 -lvl 7 -y -700 -defaultsOSRD
-preplace inst ready_d -pg 1 -lvl 5 -y -1680 -defaultsOSRD
-preplace inst smart_buffer_0 -pg 1 -lvl 7 -y -2210 -defaultsOSRD
-preplace inst master_clock -pg 1 -lvl 2 -y 240 -defaultsOSRD
-preplace inst cds_core_a -pg 1 -lvl 7 -y -1830 -defaultsOSRD
-preplace inst gpio_dac_bits -pg 1 -lvl 10 -y 2270 -defaultsOSRD
-preplace inst xlconstant_0 -pg 1 -lvl 8 -y 1350 -defaultsOSRD
-preplace inst eth -pg 1 -lvl 9 -y 980 -defaultsOSRD
-preplace inst fit_timer -pg 1 -lvl 2 -y 40 -defaultsOSRD
-preplace inst mdm -pg 1 -lvl 3 -y 210 -defaultsOSRD
-preplace inst xlconstant_1 -pg 1 -lvl 7 -y -540 -defaultsOSRD
-preplace inst cds_core_b -pg 1 -lvl 7 -y -1610 -defaultsOSRD
-preplace inst sequencer_bits -pg 1 -lvl 9 -y -430 -defaultsOSRD
-preplace inst spi_ldo_mux -pg 1 -lvl 10 -y 1640 -defaultsOSRD
-preplace inst data_a -pg 1 -lvl 5 -y -2250 -defaultsOSRD
-preplace inst cds_core_c -pg 1 -lvl 7 -y -1390 -defaultsOSRD
-preplace inst sequencer -pg 1 -lvl 6 -y -430 -defaultsOSRD
-preplace inst gpio_dac -pg 1 -lvl 6 -y 2260 -defaultsOSRD
-preplace inst data_b -pg 1 -lvl 5 -y -2020 -defaultsOSRD
-preplace inst cds_core_d -pg 1 -lvl 7 -y -1170 -defaultsOSRD
-preplace inst gpio_telemetry -pg 1 -lvl 6 -y 3140 -defaultsOSRD
-preplace inst gpio_leds_bits -pg 1 -lvl 10 -y 2850 -defaultsOSRD
-preplace inst leds_gpio -pg 1 -lvl 6 -y 2840 -defaultsOSRD
-preplace inst spi_ldo -pg 1 -lvl 6 -y 1570 -defaultsOSRD
-preplace inst ram_eth_ctrl -pg 1 -lvl 7 -y 1240 -defaultsOSRD
-preplace inst data_c -pg 1 -lvl 5 -y -1800 -defaultsOSRD
-preplace inst uart -pg 1 -lvl 10 -y 380 -defaultsOSRD
-preplace inst ublaze_mem -pg 1 -lvl 6 -y 340 -defaultsOSRD
-preplace inst data_d -pg 1 -lvl 5 -y -1580 -defaultsOSRD
-preplace inst gpio_ldo_bits -pg 1 -lvl 10 -y 1970 -defaultsOSRD
-preplace inst ram_eth -pg 1 -lvl 9 -y 1300 -defaultsOSRD
-preplace inst clk_buf -pg 1 -lvl 1 -y 250 -defaultsOSRD
-preplace inst gpio_eth -pg 1 -lvl 7 -y 1090 -defaultsOSRD
-preplace inst axi_periph -pg 1 -lvl 7 -y 430 -defaultsOSRD
-preplace inst spi_telemetry -pg 1 -lvl 6 -y 3490 -defaultsOSRD
-preplace inst gpio_telemetry_bits -pg 1 -lvl 10 -y 3150 -defaultsOSRD
-preplace inst gpio_ldo -pg 1 -lvl 6 -y 1960 -defaultsOSRD
-preplace inst axi_intc -pg 1 -lvl 3 -y 10 -defaultsOSRD
-preplace inst reset_ctrl -pg 1 -lvl 4 -y 500 -defaultsOSRD
-preplace inst microblaze_0 -pg 1 -lvl 4 -y 330 -defaultsOSRD
-preplace inst packer -pg 1 -lvl 8 -y -720 -defaultsOSRD
-preplace inst ready_a -pg 1 -lvl 5 -y -2350 -defaultsOSRD
-preplace inst ready_b -pg 1 -lvl 5 -y -2130 -defaultsOSRD
-preplace inst spi_volt_sw -pg 1 -lvl 6 -y 3720 -defaultsOSRD
-preplace inst spi_dac -pg 1 -lvl 6 -y 2590 -defaultsOSRD
-preplace netloc cds_core_b_dout_ready 1 7 1 2960
-preplace netloc sequencer_bits_out16 1 9 2 N -420 NJ
-preplace netloc spi_volt_sw_sck_o 1 6 5 N 3740 NJ 3740 NJ 3740 NJ 3740 NJ
+preplace port TGL_H1B -pg 1 -y 1230 -defaultsOSRD
+preplace port CCD_VDD_DIGPOT_SDO -pg 1 -y 3290 -defaultsOSRD -right
+preplace port TEL_MUXA0 -pg 1 -y 4230 -defaultsOSRD
+preplace port TEL_MUXA1 -pg 1 -y 4250 -defaultsOSRD
+preplace port SPARE_SW4 -pg 1 -y 1870 -defaultsOSRD
+preplace port USB_UART_TX -pg 1 -y 2020 -defaultsOSRD -right
+preplace port TEL_MUXA2 -pg 1 -y 4270 -defaultsOSRD
+preplace port CCD_VR_DIGPOT_SDO -pg 1 -y 3270 -defaultsOSRD -right
+preplace port CCD_VDD_EN -pg 1 -y 3390 -defaultsOSRD
+preplace port CCD_VR_DIGPOT_SYNCn -pg 1 -y 3150 -defaultsOSRD
+preplace port TGL_DGA -pg 1 -y 1170 -defaultsOSRD
+preplace port DIGPOT_DIN -pg 1 -y 3020 -defaultsOSRD
+preplace port TGL_TGA -pg 1 -y 1430 -defaultsOSRD
+preplace port TGL_DGB -pg 1 -y 1190 -defaultsOSRD
+preplace port DIGPOT_SCLK -pg 1 -y 3050 -defaultsOSRD
+preplace port DAC_SDI -pg 1 -y 3710 -defaultsOSRD
+preplace port TGL_TGB -pg 1 -y 1450 -defaultsOSRD
+preplace port TGL_OGA -pg 1 -y 1310 -defaultsOSRD
+preplace port TGL_OGB -pg 1 -y 1330 -defaultsOSRD
+preplace port DAC_CLRn -pg 1 -y 3570 -defaultsOSRD
+preplace port ENET_RXDV -pg 1 -y 2600 -defaultsOSRD -right
+preplace port USB_UART_RX -pg 1 -y 2040 -defaultsOSRD
+preplace port CCD_VR_EN -pg 1 -y 3410 -defaultsOSRD
+preplace port ENET_RX0 -pg 1 -y 2580 -defaultsOSRD -right
+preplace port TGL_RGA -pg 1 -y 1350 -defaultsOSRD
+preplace port DAC_SDO -pg 1 -y 3730 -defaultsOSRD -right
+preplace port CCD_VDD_DIGPOT_SYNCn -pg 1 -y 3130 -defaultsOSRD
+preplace port ENET_RX1 -pg 1 -y 2560 -defaultsOSRD -right
+preplace port TGL_RGB -pg 1 -y 1370 -defaultsOSRD
+preplace port ENET_RX2 -pg 1 -y 2540 -defaultsOSRD -right
+preplace port TGL_V2C -pg 1 -y 1510 -defaultsOSRD
+preplace port TGL_H2C -pg 1 -y 1250 -defaultsOSRD
+preplace port VOLT_SW_CLK -pg 1 -y 4680 -defaultsOSRD
+preplace port ENET_RX3 -pg 1 -y 2520 -defaultsOSRD -right
+preplace port TGL_SWA -pg 1 -y 1390 -defaultsOSRD
+preplace port ENET_RX4 -pg 1 -y 2500 -defaultsOSRD -right
+preplace port TGL_SWB -pg 1 -y 1410 -defaultsOSRD
+preplace port ENET_RX5 -pg 1 -y 2480 -defaultsOSRD -right
+preplace port ENET_RXCLK -pg 1 -y 2620 -defaultsOSRD -right
+preplace port TEL_SCLK -pg 1 -y 4410 -defaultsOSRD
+preplace port TEL_MUXEN0 -pg 1 -y 4170 -defaultsOSRD
+preplace port ENET_RX6 -pg 1 -y 2460 -defaultsOSRD -right
+preplace port DIGPOT_RSTn -pg 1 -y 3450 -defaultsOSRD
+preplace port TEL_MUXEN1 -pg 1 -y 4190 -defaultsOSRD
+preplace port TEL_MUXEN2 -pg 1 -y 4210 -defaultsOSRD
+preplace port ENET_RX7 -pg 1 -y 2440 -defaultsOSRD -right
+preplace port ENET_TXEN -pg 1 -y 2680 -defaultsOSRD
+preplace port VOLT_SW_CLR -pg 1 -y 4860 -defaultsOSRD
+preplace port VOLT_SW_DIN -pg 1 -y 4640 -defaultsOSRD
+preplace port ENET_TXER -pg 1 -y 2860 -defaultsOSRD
+preplace port CCD_VSUB_EN -pg 1 -y 3430 -defaultsOSRD
+preplace port LED0 -pg 1 -y 3910 -defaultsOSRD
+preplace port LED1 -pg 1 -y 3930 -defaultsOSRD
+preplace port LED2 -pg 1 -y 3950 -defaultsOSRD
+preplace port CCD_VSUB_DIGPOT_SYNCn -pg 1 -y 3170 -defaultsOSRD
+preplace port LED3 -pg 1 -y 3970 -defaultsOSRD
+preplace port TEL_DIN -pg 1 -y 4370 -defaultsOSRD
+preplace port TEL_DOUT -pg 1 -y 4390 -defaultsOSRD -right
+preplace port LED4 -pg 1 -y 3990 -defaultsOSRD
+preplace port TGL_V3A -pg 1 -y 1530 -defaultsOSRD
+preplace port TGL_H3A -pg 1 -y 1270 -defaultsOSRD
+preplace port CCD_VDRAIN_DIGPOT_SDO -pg 1 -y 3310 -defaultsOSRD -right
+preplace port LED5 -pg 1 -y 4010 -defaultsOSRD
+preplace port TGL_V3B -pg 1 -y 1550 -defaultsOSRD
+preplace port TGL_H3B -pg 1 -y 1290 -defaultsOSRD
+preplace port VOLT_SW_DOUT -pg 1 -y 4660 -defaultsOSRD -right
+preplace port VOLT_SW_LEn -pg 1 -y 4880 -defaultsOSRD
+preplace port DAC_SCLK -pg 1 -y 3750 -defaultsOSRD
+preplace port ENET_TX0 -pg 1 -y 2700 -defaultsOSRD
+preplace port USER_CLK -pg 1 -y 1960 -defaultsOSRD
+preplace port ENET_TX1 -pg 1 -y 2720 -defaultsOSRD
+preplace port ENET_GTXCLK -pg 1 -y 2880 -defaultsOSRD
+preplace port ENET_TX2 -pg 1 -y 2740 -defaultsOSRD
+preplace port CCD_VDRAIN_DIGPOT_SYNCn -pg 1 -y 3110 -defaultsOSRD
+preplace port ENET_TX3 -pg 1 -y 2760 -defaultsOSRD
+preplace port ENET_TX4 -pg 1 -y 2780 -defaultsOSRD
+preplace port DAC_SW_EN -pg 1 -y 3610 -defaultsOSRD
+preplace port ENET_TX5 -pg 1 -y 2800 -defaultsOSRD
+preplace port ENET_TX6 -pg 1 -y 2820 -defaultsOSRD
+preplace port TGL_V1A -pg 1 -y 1470 -defaultsOSRD
+preplace port ENET_TX7 -pg 1 -y 2840 -defaultsOSRD
+preplace port CCD_VSUB_DIGPOT_SDO -pg 1 -y 3250 -defaultsOSRD -right
+preplace port CCD_VDRAIN_EN -pg 1 -y 3370 -defaultsOSRD
+preplace port TGL_V1B -pg 1 -y 1490 -defaultsOSRD
+preplace port DAC_LDACn -pg 1 -y 3550 -defaultsOSRD
+preplace port DAC_RESETn -pg 1 -y 3590 -defaultsOSRD
+preplace port TGL_H1A -pg 1 -y 1210 -defaultsOSRD
+preplace portBus V_5V5P_SYNC -pg 1 -y -50 -defaultsOSRD
+preplace portBus TEL_CSn -pg 1 -y 4430 -defaultsOSRD
+preplace portBus V_30VN_SYNC -pg 1 -y 30 -defaultsOSRD
+preplace portBus V_100VP_SYNC -pg 1 -y 10 -defaultsOSRD
+preplace portBus V_15VN_SYNC -pg 1 -y -30 -defaultsOSRD
+preplace portBus DAC_SYNCn -pg 1 -y 3770 -defaultsOSRD
+preplace portBus V_15VP_SYNC -pg 1 -y -10 -defaultsOSRD
+preplace inst ready_c -pg 1 -lvl 4 -y 570 -defaultsOSRD
+preplace inst packer_header -pg 1 -lvl 6 -y 1530 -defaultsOSRD
+preplace inst ready_d -pg 1 -lvl 4 -y 770 -defaultsOSRD
+preplace inst smart_buffer_0 -pg 1 -lvl 6 -y 220 -defaultsOSRD
+preplace inst master_clock -pg 1 -lvl 2 -y 1950 -defaultsOSRD
+preplace inst cds_core_a -pg 1 -lvl 6 -y 600 -defaultsOSRD
+preplace inst gpio_dac_bits -pg 1 -lvl 10 -y 3580 -defaultsOSRD
+preplace inst xlconstant_0 -pg 1 -lvl 7 -y 2290 -defaultsOSRD
+preplace inst eth -pg 1 -lvl 8 -y 2820 -defaultsOSRD
+preplace inst xlconstant_1 -pg 1 -lvl 6 -y 1640 -defaultsOSRD
+preplace inst cds_core_b -pg 1 -lvl 6 -y 820 -defaultsOSRD
+preplace inst sequencer_bits -pg 1 -lvl 8 -y 1480 -defaultsOSRD
+preplace inst spi_ldo_mux -pg 1 -lvl 10 -y 3150 -defaultsOSRD
+preplace inst xlconstant_2 -pg 1 -lvl 9 -y 20 -defaultsOSRD
+preplace inst microblaze_hie -pg 1 -lvl 3 -y 1920 -defaultsOSRD
+preplace inst data_a -pg 1 -lvl 4 -y 270 -defaultsOSRD
+preplace inst cds_core_c -pg 1 -lvl 6 -y 1040 -defaultsOSRD
+preplace inst sequencer -pg 1 -lvl 6 -y 1930 -defaultsOSRD
+preplace inst gpio_dac -pg 1 -lvl 5 -y 3570 -defaultsOSRD
+preplace inst data_b -pg 1 -lvl 4 -y 470 -defaultsOSRD
+preplace inst cds_core_d -pg 1 -lvl 6 -y 1260 -defaultsOSRD
+preplace inst gpio_telemetry -pg 1 -lvl 5 -y 4210 -defaultsOSRD
+preplace inst gpio_leds_bits -pg 1 -lvl 10 -y 3960 -defaultsOSRD
+preplace inst leds_gpio -pg 1 -lvl 5 -y 3950 -defaultsOSRD
+preplace inst spi_ldo -pg 1 -lvl 5 -y 3050 -defaultsOSRD
+preplace inst ram_eth_ctrl -pg 1 -lvl 6 -y 2170 -defaultsOSRD
+preplace inst data_c -pg 1 -lvl 4 -y 670 -defaultsOSRD
+preplace inst uart -pg 1 -lvl 10 -y 2030 -defaultsOSRD
+preplace inst data_d -pg 1 -lvl 4 -y 870 -defaultsOSRD
+preplace inst gpio_ldo_bits -pg 1 -lvl 10 -y 3410 -defaultsOSRD
+preplace inst ram_eth -pg 1 -lvl 10 -y 2250 -defaultsOSRD
+preplace inst clk_buf -pg 1 -lvl 1 -y 1960 -defaultsOSRD
+preplace inst gpio_volt_sw -pg 1 -lvl 5 -y 4860 -defaultsOSRD
+preplace inst axi_periph -pg 1 -lvl 4 -y 2180 -defaultsOSRD
+preplace inst gpio_eth -pg 1 -lvl 6 -y 2930 -defaultsOSRD
+preplace inst spi_telemetry -pg 1 -lvl 5 -y 4400 -defaultsOSRD
+preplace inst gpio_telemetry_bits -pg 1 -lvl 10 -y 4220 -defaultsOSRD
+preplace inst gpio_ldo -pg 1 -lvl 5 -y 3400 -defaultsOSRD
+preplace inst packer -pg 1 -lvl 7 -y 1500 -defaultsOSRD
+preplace inst ready_a -pg 1 -lvl 4 -y 170 -defaultsOSRD
+preplace inst vec2bit_2_0 -pg 1 -lvl 10 -y 4870 -defaultsOSRD
+preplace inst ready_b -pg 1 -lvl 4 -y 370 -defaultsOSRD
+preplace inst spi_volt_sw -pg 1 -lvl 5 -y 4660 -defaultsOSRD
+preplace inst spi_dac -pg 1 -lvl 5 -y 3740 -defaultsOSRD
+preplace netloc cds_core_b_dout_ready 1 6 1 2450
+preplace netloc sequencer_bits_out16 1 8 3 N 1490 NJ 1490 NJ
+preplace netloc spi_volt_sw_sck_o 1 5 6 N 4680 NJ 4680 NJ 4680 NJ 4680 NJ 4680 NJ
 preplace netloc gpio_telemetry_bits_out0 1 10 1 N
 preplace netloc gpio_leds_bits_out4 1 10 1 N
-preplace netloc sequencer_bits_out17 1 9 2 N -400 NJ
+preplace netloc sequencer_bits_out17 1 8 3 N 1510 NJ 1510 NJ
 preplace netloc gpio_telemetry_bits_out1 1 10 1 N
 preplace netloc gpio_leds_bits_out5 1 10 1 N
-preplace netloc spi_ldo_mux_sdo_out 1 6 5 2330 1540 N 1540 N 1540 N 1540 4000
-preplace netloc ENET_RX3_1 1 0 9 N 850 N 850 N 850 N 850 N 850 N 850 2140 960 N 960 N
-preplace netloc sequencer_bits_out18 1 9 2 N -380 NJ
+preplace netloc spi_ldo_mux_sdo_out 1 5 6 N 3040 N 3040 N 3040 N 3040 N 3040 3890
+preplace netloc ENET_RX3_1 1 7 4 3040 2520 N 2520 N 2520 N
+preplace netloc sequencer_bits_out18 1 8 3 N 1530 NJ 1530 NJ
 preplace netloc gpio_telemetry_bits_out2 1 10 1 N
-preplace netloc sequencer_bits_out19 1 9 2 N -360 NJ
+preplace netloc sequencer_bits_out19 1 8 3 N 1550 NJ 1550 NJ
 preplace netloc gpio_telemetry_bits_out3 1 10 1 N
-preplace netloc eth_resync_0_ENET_TX0 1 9 2 3720 910 NJ
-preplace netloc axi_periph_M12_AXI 1 5 3 1820J -510 2120J -480 2780J
+preplace netloc eth_resync_0_ENET_TX0 1 8 3 N 2700 NJ 2700 NJ
+preplace netloc axi_periph_M12_AXI 1 4 3 1240 1380 NJ 1380 2440J
 preplace netloc gpio_telemetry_bits_out4 1 10 1 N
-preplace netloc eth_resync_0_ENET_TX1 1 9 2 3690 930 4020J
+preplace netloc eth_resync_0_ENET_TX1 1 8 3 N 2720 NJ 2720 NJ
 preplace netloc gpio_telemetry_bits_out5 1 10 1 N
-preplace netloc fit_timer_0_Interrupt 1 2 1 N
-preplace netloc eth_resync_0_ENET_TX2 1 9 2 3680 950 NJ
-preplace netloc CCD_VSUB_DIGPOT_SDO_1 1 9 2 3760 1810 N
-preplace netloc eth_data_out 1 8 2 3400J 1460 3760
-preplace netloc eth_resync_0_ENET_TX3 1 9 2 3740J 900 4000
+preplace netloc eth_resync_0_ENET_TX2 1 8 3 N 2740 NJ 2740 NJ
+preplace netloc CCD_VSUB_DIGPOT_SDO_1 1 9 2 3640 3250 N
+preplace netloc eth_data_out 1 8 2 3400 2250 N
+preplace netloc eth_resync_0_ENET_TX3 1 8 3 NJ 2760 N 2760 N
 preplace netloc axi_uartlite_0_tx 1 10 1 N
-preplace netloc microblaze_0_axi_periph_M00_AXI 1 7 3 N 250 N 250 3700
-preplace netloc microblaze_0_dlmb_1 1 4 2 N 310 N
-preplace netloc eth_resync_0_ENET_TX4 1 9 2 3730J 880 3990
-preplace netloc ENET_RX1_1 1 0 9 N 890 N 890 N 890 N 890 N 890 N 890 2120 920 N 920 N
-preplace netloc eth_resync_0_ENET_TX5 1 9 2 3710 710 NJ
-preplace netloc axi_periph_M04_AXI 1 5 3 1790J -130 NJ -130 2730J
-preplace netloc microblaze_0_M_AXI_DP 1 4 3 1270 10 N 10 N
-preplace netloc smart_buffer_0_data_out 1 7 1 2990
-preplace netloc master_clock_clk_out2 1 2 4 370J 280 690J 220 N 220 1720
-preplace netloc eth_resync_0_ENET_TX6 1 9 2 3700J 700 3990
-preplace netloc rst_clk_wiz_1_100M_mb_reset 1 3 2 730 240 1260
-preplace netloc eth_addr 1 8 2 3350J 1440 3720
-preplace netloc axi_periph_M08_AXI 1 5 3 1780J -100 NJ -100 2740J
-preplace netloc axi_periph_M07_AXI 1 5 3 1770J -110 NJ -110 2750J
-preplace netloc cds_core_d_dout 1 7 1 2860
-preplace netloc eth_resync_0_ENET_TX7 1 9 2 3770 920 4010J
-preplace netloc leds_gpio_gpio_io_o 1 6 4 NJ 2850 NJ 2850 NJ 2850 N
-preplace netloc axi_periph_M10_AXI 1 5 3 1820J -70 NJ -70 2700J
-preplace netloc smart_buffer_0_ready_out 1 7 1 3000
-preplace netloc rst_clk_wiz_1_100M_bus_struct_reset 1 4 2 1290 370 N
-preplace netloc ENET_RX4_1 1 0 9 N 830 N 830 N 830 N 830 N 830 N 830 2150 980 N 980 N
+preplace netloc eth_resync_0_ENET_TX4 1 8 3 NJ 2780 N 2780 N
+preplace netloc ENET_RX1_1 1 7 4 3060 2560 N 2560 N 2560 N
+preplace netloc eth_resync_0_ENET_TX5 1 8 3 N 2800 NJ 2800 NJ
+preplace netloc axi_periph_M04_AXI 1 4 1 1300
+preplace netloc microblaze_0_M_AXI_DP 1 3 1 350
+preplace netloc smart_buffer_0_data_out 1 6 1 2500
+preplace netloc master_clock_clk_out2 1 2 3 -10 1680 N 1680 1270
+preplace netloc eth_resync_0_ENET_TX6 1 8 3 NJ 2820 N 2820 N
+preplace netloc eth_addr 1 8 2 3390 2210 N
+preplace netloc axi_periph_M08_AXI 1 4 1 1180
+preplace netloc axi_periph_M07_AXI 1 4 1 1190
+preplace netloc axi_periph_M00_AXI 1 4 6 1310 2000 1710J 2010 NJ 2010 NJ 2010 NJ 2010 NJ
+preplace netloc cds_core_d_dout 1 6 1 2390
+preplace netloc eth_resync_0_ENET_TX7 1 8 3 N 2840 NJ 2840 NJ
+preplace netloc leds_gpio_gpio_io_o 1 5 5 NJ 3960 NJ 3960 NJ 3960 N 3960 N
+preplace netloc axi_periph_M10_AXI 1 4 1 1160
+preplace netloc smart_buffer_0_ready_out 1 6 1 2520
+preplace netloc ENET_RX4_1 1 7 4 3030 2500 N 2500 N 2500 N
 preplace netloc gpio_bits_out0 1 10 1 N
-preplace netloc axi_periph_M03_AXI 1 6 2 2340J -60 2680J
-preplace netloc spi_ldo_sck_o 1 6 5 2270 1510 NJ 1510 NJ 1510 NJ 1510 NJ
-preplace netloc spi_ldo_ss_o 1 6 4 N 1600 N 1600 N 1600 N
+preplace netloc axi_periph_M03_AXI 1 4 1 1310
+preplace netloc spi_ldo_sck_o 1 5 6 1760 3050 NJ 3050 NJ 3050 NJ 3050 NJ 3050 NJ
+preplace netloc spi_ldo_ss_o 1 5 5 N 3080 N 3080 N 3080 N 3080 3640
 preplace netloc gpio_bits_out1 1 10 1 N
-preplace netloc axi_periph_M16_AXI 1 6 2 2350 -1950 2810
-preplace netloc microblaze_0_ilmb_1 1 4 2 N 330 N
-preplace netloc xlconstant_1_dout 1 7 1 N
-preplace netloc packer_header_vec2bit_0_dout 1 6 2 2300 -840 2850
-preplace netloc spi_volt_sw_io0_o 1 6 5 NJ 3700 NJ 3700 NJ 3700 NJ 3700 N
+preplace netloc axi_periph_M16_AXI 1 4 2 1280 980 NJ
+preplace netloc xlconstant_1_dout 1 6 1 2360
+preplace netloc packer_header_vec2bit_0_dout 1 5 2 1810 1440 2380
+preplace netloc spi_volt_sw_io0_o 1 5 6 NJ 4640 NJ 4640 NJ 4640 NJ 4640 N 4640 N
 preplace netloc gpio_bits_out2 1 10 1 N
-preplace netloc ENET_RX6_1 1 0 9 -170 -170 N -170 N -170 N -170 N -170 N -170 N -170 N -170 3340
-preplace netloc ENET_RXCLK_1 1 0 9 -190 -210 N -210 N -210 N -210 N -210 N -210 N -210 N -210 3390
-preplace netloc sequencer_bits_out0 1 9 2 NJ -740 N
+preplace netloc ENET_RX6_1 1 7 4 3010 2460 N 2460 N 2460 N
+preplace netloc ENET_RXCLK_1 1 7 4 3090 2620 N 2620 N 2620 N
+preplace netloc sequencer_bits_out0 1 8 3 NJ 1170 N 1170 N
 preplace netloc gpio_bits_out3 1 10 1 N
-preplace netloc sequencer_bits_out1 1 9 2 N -720 NJ
-preplace netloc mdm_1_debug_sys_rst 1 3 1 670
-preplace netloc gpio_ldo_gpio_io_o 1 6 4 NJ 1970 NJ 1970 NJ 1970 N
+preplace netloc axi_periph_M19_AXI 1 4 1 1150
+preplace netloc sequencer_bits_out1 1 8 3 N 1190 NJ 1190 NJ
+preplace netloc gpio_ldo_gpio_io_o 1 5 5 NJ 3410 NJ 3410 NJ 3410 N 3410 N
 preplace netloc gpio_bits_out4 1 10 1 N
 preplace netloc USER_CLK_1 1 0 1 N
-preplace netloc sequencer_bits_out2 1 9 2 N -700 NJ
-preplace netloc ram_eth_doutb 1 8 1 3340
-preplace netloc sequencer_bits_out3 1 9 2 N -680 NJ
-preplace netloc sequencer_bits_out4 1 9 2 N -660 NJ
-preplace netloc sequencer_bits_out5 1 9 2 N -640 NJ
-preplace netloc microblaze_0_Clk 1 1 9 140 110 380 290 720 230 N 230 1730 -60 2170 -430 2970 -430 3380 -40 3750
-preplace netloc axi_periph_M02_AXI 1 6 2 2350J -50 2670J
-preplace netloc cds_core_c_dout 1 7 1 2880
-preplace netloc sequencer_bits_out6 1 9 2 N -620 NJ
-preplace netloc reset_ctrl_peripheral_reset 1 1 4 150 610 N 610 NJ 610 1260J
-preplace netloc axi_periph_M11_AXI 1 5 3 1760J -90 NJ -90 2760J
-preplace netloc sequencer_bits_out21 1 6 4 2270 -410 NJ -410 3320J -810 3690
-preplace netloc cds_core_d_dout_ready 1 7 1 2870
-preplace netloc packer_dout 1 8 1 3360
-preplace netloc sequencer_bits_out7 1 9 2 N -600 NJ
-preplace netloc TEL_DOUT_1 1 6 5 N 3480 NJ 3480 NJ 3480 NJ 3480 NJ
-preplace netloc gpio_telemetry_gpio_io_o 1 6 4 N 3150 NJ 3150 NJ 3150 NJ
-preplace netloc ENET_RX5_1 1 0 9 N 810 N 810 N 810 N 810 N 810 N 810 2160 990 N 990 3330
-preplace netloc sequencer_bits_out22 1 6 4 2280 -190 NJ -190 3410J -50 3750
-preplace netloc sequencer_bits_out8 1 9 2 N -580 NJ
-preplace netloc spi_dac_ss_o 1 6 5 N 2620 NJ 2620 NJ 2620 NJ 2620 NJ
-preplace netloc sequencer_bits_out23 1 6 4 2290 -1000 NJ -1000 NJ -1000 3710
-preplace netloc cds_core_a_dout 1 7 1 2970
-preplace netloc cds_core_c_dout_ready 1 7 1 2900
-preplace netloc sequencer_bits_out9 1 9 2 N -560 NJ
-preplace netloc spi_telemetry_sck_o 1 6 5 N 3500 NJ 3500 NJ 3500 NJ 3500 NJ
+preplace netloc sequencer_bits_out2 1 8 3 N 1210 NJ 1210 NJ
+preplace netloc ram_eth_doutb 1 7 3 2990 2270 N 2270 N
+preplace netloc sequencer_bits_out3 1 8 3 N 1230 NJ 1230 NJ
+preplace netloc gpio_volt_sw_gpio_io_o 1 5 5 NJ 4870 NJ 4870 NJ 4870 NJ 4870 N
+preplace netloc sequencer_bits_out4 1 8 3 N 1250 NJ 1250 NJ
+preplace netloc sequencer_bits_out5 1 8 3 N 1270 NJ 1270 NJ
+preplace netloc microblaze_0_Clk 1 2 8 0 2000 380 2710 1280 2710 1720 1700 2460 1860 N 1860 N 1860 3640
+preplace netloc axi_periph_M02_AXI 1 4 2 NJ 2030 1690
+preplace netloc cds_core_c_dout 1 6 1 2410
+preplace netloc sequencer_bits_out6 1 8 3 N 1290 NJ 1290 NJ
+preplace netloc axi_periph_M11_AXI 1 4 2 1250 1910 NJ
+preplace netloc xlconstant_2_dout 1 9 2 NJ 20 3890
+preplace netloc sequencer_bits_out21 1 5 4 1720J -20 NJ -20 NJ -20 3420
+preplace netloc cds_core_d_dout_ready 1 6 1 2400
+preplace netloc packer_dout 1 7 1 2970
+preplace netloc sequencer_bits_out7 1 8 3 N 1310 NJ 1310 NJ
+preplace netloc TEL_DOUT_1 1 5 6 N 4390 NJ 4390 NJ 4390 NJ 4390 NJ 4390 NJ
+preplace netloc gpio_telemetry_gpio_io_o 1 5 5 N 4220 NJ 4220 NJ 4220 NJ 4220 NJ
+preplace netloc ENET_RX5_1 1 7 4 3020 2480 N 2480 N 2480 N
+preplace netloc sequencer_bits_out22 1 5 4 1740J -10 NJ -10 NJ -10 3410
+preplace netloc sequencer_bits_out8 1 8 3 N 1330 NJ 1330 NJ
+preplace netloc spi_dac_ss_o 1 5 6 N 3770 NJ 3770 NJ 3770 NJ 3770 NJ 3770 NJ
+preplace netloc sequencer_bits_out23 1 5 4 1820J 0 NJ 0 NJ 0 3400
+preplace netloc cds_core_a_dout 1 6 1 2460
+preplace netloc cds_core_c_dout_ready 1 6 1 2420
+preplace netloc sequencer_bits_out9 1 8 3 N 1350 NJ 1350 NJ
+preplace netloc spi_telemetry_sck_o 1 5 6 N 4410 NJ 4410 NJ 4410 NJ 4410 NJ 4410 NJ
 preplace netloc util_ds_buf_0_BUFG_O 1 1 1 N
-preplace netloc eth_wren 1 8 2 3420J 1470 3740
-preplace netloc axi_periph_M06_AXI 1 5 3 1750J -140 NJ -140 2770J
-preplace netloc Net 1 5 3 N -2350 2230 -1970 3010
-preplace netloc sequencer_bits_out24 1 6 4 2320 -1010 NJ -1010 NJ -1010 3760
-preplace netloc spi_dac_sck_o 1 6 5 N 2600 NJ 2600 NJ 2600 NJ 2600 NJ
-preplace netloc spi_ldo_io0_o 1 6 5 2170 1490 NJ 1490 NJ 1490 NJ 1490 NJ
-preplace netloc eth_resync_0_ENET_GTXCLK 1 9 2 3750J 740 3990
-preplace netloc CCD_VDD_DIGPOT_SDO_1 1 9 2 3710 1770 N
-preplace netloc eth_resync_0_ENET_TXEN 1 9 2 3740 890 3990J
-preplace netloc axi_periph_M14_AXI 1 6 2 2350 -1030 2790
-preplace netloc Net1 1 5 3 N -2250 2210 -1980 3020
-preplace netloc sequencer_bits_out25 1 6 4 2330 -770 2840J -440 3340J -800 3700
-preplace netloc clk_wiz_1_locked 1 2 2 360 310 660
-preplace netloc ENET_RX0_1 1 0 9 N 910 N 910 N 910 N 910 N 910 N 910 N 910 3000 900 N
-preplace netloc microblaze_0_debug 1 3 1 700
-preplace netloc Net2 1 5 3 N -2130 2190 -880 N
-preplace netloc sequencer_bits_out26 1 6 4 2310 -180 NJ -180 3400J -60 3690
-preplace netloc CCD_VDRAIN_DIGPOT_SDO_1 1 9 2 3690 1750 N
-preplace netloc gpio_eth_gpio_io_o 1 7 2 N 1100 N
-preplace netloc axi_periph_M05_AXI 1 5 3 1800J -120 NJ -120 2720J
-preplace netloc ram_eth_ctrl_BRAM_PORTA 1 7 2 2850 1220 N
-preplace netloc Net3 1 5 3 N -2020 2200 -860 N
+preplace netloc eth_wren 1 8 2 3420 2330 N
+preplace netloc axi_periph_M06_AXI 1 4 1 1260
+preplace netloc Net 1 4 3 N 170 1740 430 2550
+preplace netloc sequencer_bits_out24 1 5 4 1830J 10 NJ 10 NJ 10 3390
+preplace netloc spi_ldo_io0_o 1 5 6 N 3020 NJ 3020 NJ 3020 NJ 3020 NJ 3020 NJ
+preplace netloc eth_resync_0_ENET_GTXCLK 1 8 3 NJ 2880 N 2880 N
+preplace netloc CCD_VDD_DIGPOT_SDO_1 1 9 2 3620 3290 N
+preplace netloc eth_resync_0_ENET_TXEN 1 8 3 N 2680 NJ 2680 NJ
+preplace netloc spi_dac_sck_o 1 5 6 N 3750 NJ 3750 NJ 3750 NJ 3750 NJ 3750 NJ
+preplace netloc axi_periph_M14_AXI 1 4 2 1210 760 NJ
+preplace netloc Net1 1 4 3 N 270 1750 440 2540
+preplace netloc sequencer_bits_out25 1 5 4 1820J 1450 2370J 1800 2950J 1850 3400
+preplace netloc clk_wiz_1_locked 1 2 1 20
+preplace netloc ENET_RX0_1 1 7 4 3070 2580 N 2580 N 2580 N
+preplace netloc Net2 1 4 3 N 370 1700 450 2530
+preplace netloc sequencer_bits_out26 1 5 4 1830J 1460 2350J 1880 NJ 1880 3390
+preplace netloc CCD_VDRAIN_DIGPOT_SDO_1 1 9 2 3610 3310 N
+preplace netloc gpio_eth_gpio_io_o 1 6 2 N 2940 N
+preplace netloc axi_periph_M05_AXI 1 4 1 1290
+preplace netloc ram_eth_ctrl_BRAM_PORTA 1 6 4 N 2170 N 2170 N 2170 N
+preplace netloc Net3 1 4 3 N 470 1760 460 2510
 preplace netloc spi_ldo_mux_ss0_out 1 10 1 NJ
-preplace netloc SPARE_SW4_1 1 0 9 NJ 190 140 320 N 320 680 -160 N -160 N -160 N -160 N -160 3320
-preplace netloc gpio_dac_gpio_io_o 1 6 4 NJ 2270 NJ 2270 NJ 2270 N
-preplace netloc ENET_RX7_1 1 0 9 -180 -200 N -200 N -200 N -200 N -200 N -200 N -200 N -200 3350
-preplace netloc Net4 1 5 3 N -1920 2220 -900 2920
-preplace netloc eth_resync_0_ENET_TXER 1 9 2 3760 750 NJ
-preplace netloc Net5 1 5 3 N -1800 2240 -910 2930
-preplace netloc axi_periph_M17_AXI 1 6 2 2340 -890 2800
-preplace netloc Net6 1 5 3 N -1680 2250 -1020 2940
-preplace netloc spi_telemetry_io0_o 1 6 5 NJ 3460 NJ 3460 NJ 3460 NJ 3460 N
-preplace netloc ENET_RXDV_1 1 0 9 N 930 N 930 N 930 N 930 N 930 N 930 N 930 2780 880 N
-preplace netloc rst_clk_wiz_1_100M_interconnect_aresetn 1 4 3 1280 50 N 50 N
-preplace netloc Net7 1 5 3 N -1580 2260 -1040 2950
-preplace netloc DAC_SDO_1 1 6 5 N 2580 N 2580 N 2580 N 2580 N
-preplace netloc sequencer_seq_port_out 1 6 3 2120 -400 NJ -400 3410J
-preplace netloc VOLT_SW_DOUT_1 1 6 5 N 3720 NJ 3720 NJ 3720 NJ 3720 NJ
-preplace netloc spi_dac_io0_o 1 6 5 NJ 2560 NJ 2560 NJ 2560 NJ 2560 N
+preplace netloc SPARE_SW4_1 1 0 10 NJ 1870 -200 1870 10 1670 N 1670 N 1670 1700 1780 N 1780 2960 2310 N 2310 N
+preplace netloc gpio_dac_gpio_io_o 1 5 5 NJ 3580 NJ 3580 NJ 3580 N 3580 N
+preplace netloc ENET_RX7_1 1 7 4 3000 2440 N 2440 N 2440 N
+preplace netloc Net4 1 4 3 N 570 1770 470 2490
+preplace netloc eth_resync_0_ENET_TXER 1 8 3 N 2860 NJ 2860 NJ
+preplace netloc Net5 1 4 3 N 670 1780 480 2480
+preplace netloc axi_periph_M17_AXI 1 4 2 1220 70 NJ
+preplace netloc vec2bit_2_0_out0 1 10 1 N
+preplace netloc rst_clk_wiz_1_100M_interconnect_aresetn 1 3 1 360
+preplace netloc Net6 1 4 3 N 770 1790 1420 N
+preplace netloc spi_telemetry_io0_o 1 5 6 NJ 4370 NJ 4370 NJ 4370 NJ 4370 N 4370 N
+preplace netloc ENET_RXDV_1 1 7 4 3080 2600 N 2600 N 2600 N
+preplace netloc vec2bit_2_0_out1 1 10 1 N
+preplace netloc Net7 1 4 3 N 870 1800 1430 2440
+preplace netloc DAC_SDO_1 1 5 6 N 3730 N 3730 N 3730 N 3730 N 3730 N
+preplace netloc sequencer_seq_port_out 1 6 2 2540 1790 3090J
+preplace netloc VOLT_SW_DOUT_1 1 5 6 N 4660 NJ 4660 NJ 4660 NJ 4660 NJ 4660 NJ
 preplace netloc spi_ldo_mux_ss2_out 1 10 1 NJ
-preplace netloc packer_dready 1 8 1 3370
-preplace netloc sequencer_bits_out10 1 9 2 N -540 NJ
-preplace netloc CCD_VR_DIGPOT_SDO_1 1 9 2 3730 1790 N
-preplace netloc sequencer_bits_out11 1 9 2 N -520 NJ
-preplace netloc spi_telemetry_ss_o 1 6 5 N 3520 NJ 3520 NJ 3520 NJ 3520 NJ
+preplace netloc spi_dac_io0_o 1 5 6 NJ 3710 NJ 3710 NJ 3710 NJ 3710 N 3710 N
+preplace netloc packer_dready 1 7 1 2980
+preplace netloc sequencer_bits_out10 1 8 3 N 1370 NJ 1370 NJ
+preplace netloc CCD_VR_DIGPOT_SDO_1 1 9 2 3630 3270 N
+preplace netloc sequencer_bits_out11 1 8 3 N 1390 NJ 1390 NJ
+preplace netloc spi_telemetry_ss_o 1 5 6 N 4430 NJ 4430 NJ 4430 NJ 4430 NJ 4430 NJ
 preplace netloc spi_ldo_mux_ss3_out 1 10 1 NJ
-preplace netloc xlconstant_0_dout 1 8 1 3330
-preplace netloc sequencer_bits_out12 1 9 2 N -500 NJ
+preplace netloc xlconstant_0_dout 1 7 3 N 2290 N 2290 N
+preplace netloc sequencer_bits_out12 1 8 3 N 1410 NJ 1410 NJ
 preplace netloc gpio_leds_bits_out0 1 10 1 N
+preplace netloc ENET_RX2_1 1 7 4 3050 2540 N 2540 N 2540 N
 preplace netloc gpio_dac_bits_out0 1 10 1 N
-preplace netloc ENET_RX2_1 1 0 9 N 870 N 870 N 870 N 870 N 870 N 870 2130 940 N 940 N
-preplace netloc cds_core_b_dout 1 7 1 2910
-preplace netloc sequencer_bits_out13 1 9 2 N -480 NJ
+preplace netloc cds_core_b_dout 1 6 1 2430
+preplace netloc sequencer_bits_out13 1 8 3 N 1430 NJ 1430 NJ
 preplace netloc gpio_leds_bits_out1 1 10 1 N
-preplace netloc eth_clk_125_out 1 8 2 3370J 1450 3690
+preplace netloc eth_clk_125_out 1 8 2 3410 2230 N
 preplace netloc gpio_dac_bits_out1 1 10 1 N
 preplace netloc USB_UART_TX_1 1 10 1 N
-preplace netloc axi_periph_M13_AXI 1 7 1 2890J
-preplace netloc axi_periph_M01_AXI 1 2 6 390 -150 N -150 N -150 NJ -150 NJ -150 2690J
-preplace netloc sequencer_bits_out14 1 9 2 N -460 NJ
+preplace netloc axi_periph_M13_AXI 1 4 2 1230 1200 NJ
+preplace netloc axi_periph_M01_AXI 1 4 2 NJ 2010 1700
+preplace netloc sequencer_bits_out14 1 8 3 N 1450 NJ 1450 NJ
 preplace netloc gpio_leds_bits_out2 1 10 1 N
 preplace netloc gpio_dac_bits_out2 1 10 1 N
 preplace netloc spi_ldo_mux_ss1_out 1 10 1 NJ
-preplace netloc axi_periph_M18_AXI 1 6 2 2230 -2420 2830
-preplace netloc axi_periph_M15_AXI 1 6 2 2340 -1960 2820
-preplace netloc axi_periph_M09_AXI 1 5 3 1810J -80 NJ -80 2710J
-preplace netloc axi_intc_0_interrupt 1 3 1 710J
-preplace netloc cds_core_a_dout_ready 1 7 1 2980
-preplace netloc sequencer_bits_out15 1 9 2 N -440 NJ
+preplace netloc axi_periph_M18_AXI 1 2 3 20 1660 NJ 1660 1150
+preplace netloc axi_periph_M15_AXI 1 4 2 1200 540 NJ
+preplace netloc axi_periph_M09_AXI 1 4 1 1170
+preplace netloc cds_core_a_dout_ready 1 6 1 2470
+preplace netloc sequencer_bits_out15 1 8 3 N 1470 NJ 1470 NJ
 preplace netloc gpio_leds_bits_out3 1 10 1 N
 preplace netloc gpio_dac_bits_out3 1 10 1 N
-preplace netloc rst_clk_wiz_1_100M_peripheral_aresetn 1 2 8 390 600 N 600 1280 540 1740 -50 2180 -420 3010 -420 3420 -30 3690
-levelinfo -pg 1 -210 20 270 540 1020 1640 1970 2520 3170 3550 3880 4040 -top -2490 -bot 4080
+preplace netloc rst_clk_wiz_1_100M_peripheral_aresetn 1 3 7 370 2720 1220 2720 1730 1790 2520 1870 N 1870 N 1870 3610
+levelinfo -pg 1 -540 -320 -100 190 1000 1550 2200 2800 3260 3530 3780 3920 -top -70 -bot 5200
 ",
 }
 
@@ -1225,4 +1327,6 @@ levelinfo -pg 1 -210 20 270 540 1020 1640 1970 2520 3170 3550 3880 4040 -top -24
 
 create_root_design ""
 
+
+common::send_msg_id "BD_TCL-1000" "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
