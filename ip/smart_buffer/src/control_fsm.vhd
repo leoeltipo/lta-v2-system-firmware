@@ -98,28 +98,28 @@ entity control_fsm is
         -- Memory Buffer 0.
         mem_en_0                : out STD_LOGIC;
         mem_we_0                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_0              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_0              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_0               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_0              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 		
         -- Memory Buffer 1.
         mem_en_1                : out STD_LOGIC;
         mem_we_1                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_1              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_1              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_1               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_1              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 		-- Memory Buffer 2.
         mem_en_2                : out STD_LOGIC;
         mem_we_2                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_2              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_2              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_2               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_2              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 		
         -- Memory Buffer 3.
         mem_en_3                : out STD_LOGIC;
         mem_we_3                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_3              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_3              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_3               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_3              : in STD_LOGIC_VECTOR(19 DOWNTO 0)		
         );
@@ -164,58 +164,58 @@ signal eot_ack_i : std_logic;
 -- Capture.
 signal mem_en_0_c   : STD_LOGIC;
 signal mem_we_0_c   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_0_c : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_0_c : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_1_c   : STD_LOGIC;
 signal mem_we_1_c   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_1_c : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_1_c : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_2_c   : STD_LOGIC;
 signal mem_we_2_c   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_2_c : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_2_c : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_3_c   : STD_LOGIC;
 signal mem_we_3_c   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_3_c : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_3_c : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 -- Transfer
 signal mem_en_0_t   : STD_LOGIC;
 signal mem_we_0_t   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_0_t : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_0_t : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_1_t   : STD_LOGIC;
 signal mem_we_1_t   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_1_t : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_1_t : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_2_t   : STD_LOGIC;
 signal mem_we_2_t   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_2_t : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_2_t : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_en_3_t   : STD_LOGIC;
 signal mem_we_3_t   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_3_t : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_3_t : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 
 signal mem_dout_t   : STD_LOGIC_VECTOR (19 downto 0);
 
 -- After global mux.
 signal mem_en_0_i   : STD_LOGIC;
 signal mem_we_0_i   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_0_i : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_0_i : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 signal mem_din_0_i  : STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 signal mem_en_1_i   : STD_LOGIC;
 signal mem_we_1_i   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_1_i : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_1_i : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 signal mem_din_1_i  : STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 signal mem_en_2_i   : STD_LOGIC;
 signal mem_we_2_i   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_2_i : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_2_i : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 signal mem_din_2_i  : STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 signal mem_en_3_i   : STD_LOGIC;
 signal mem_we_3_i   : STD_LOGIC_VECTOR(0 DOWNTO 0);
-signal mem_addr_3_i : STD_LOGIC_VECTOR(15 DOWNTO 0);
+signal mem_addr_3_i : STD_LOGIC_VECTOR(N-3 DOWNTO 0);
 signal mem_din_3_i  : STD_LOGIC_VECTOR(19 DOWNTO 0);
                    
 begin

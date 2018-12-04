@@ -274,28 +274,28 @@ component control_fsm is
         -- Memory Buffer 0.
         mem_en_0                : out STD_LOGIC;
         mem_we_0                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_0              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_0              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_0               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_0              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 		
         -- Memory Buffer 1.
         mem_en_1                : out STD_LOGIC;
         mem_we_1                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_1              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_1              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_1               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_1              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 
 		-- Memory Buffer 2.
         mem_en_2                : out STD_LOGIC;
         mem_we_2                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_2              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_2              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_2               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_2              : in STD_LOGIC_VECTOR(19 DOWNTO 0);
 		
         -- Memory Buffer 3.
         mem_en_3                : out STD_LOGIC;
         mem_we_3                : out STD_LOGIC_VECTOR(0 DOWNTO 0);
-        mem_addr_3              : out STD_LOGIC_VECTOR(15 DOWNTO 0);
+        mem_addr_3              : out STD_LOGIC_VECTOR(N-3 DOWNTO 0);
         mem_din_3               : out STD_LOGIC_VECTOR(19 DOWNTO 0);
         mem_dout_3              : in STD_LOGIC_VECTOR(19 DOWNTO 0)		
         );
@@ -307,7 +307,7 @@ COMPONENT smart_mem_0
     clka : IN STD_LOGIC;
     ena : IN STD_LOGIC;
     wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
     dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
     douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
   );
@@ -318,7 +318,7 @@ COMPONENT smart_mem_1
     clka : IN STD_LOGIC;
     ena : IN STD_LOGIC;
     wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
     dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
     douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
   );
@@ -329,7 +329,7 @@ COMPONENT smart_mem_2
     clka : IN STD_LOGIC;
     ena : IN STD_LOGIC;
     wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
     dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
     douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
   );
@@ -340,7 +340,7 @@ COMPONENT smart_mem_3
     clka : IN STD_LOGIC;
     ena : IN STD_LOGIC;
     wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
     dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
     douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
   );
@@ -399,25 +399,25 @@ signal nsamp_chd            : std_logic_vector (N downto 0);
 -- Memory signals.
 signal ena_0    : std_logic;
 signal wea_0    : std_logic_vector (0 downto 0);
-signal addra_0  : std_logic_vector (15 downto 0);
+signal addra_0  : std_logic_vector (N-3 downto 0);
 signal dina_0   : std_logic_vector (19 downto 0);
 signal douta_0  : std_logic_vector (19 downto 0);
 
 signal ena_1    : std_logic;
 signal wea_1    : std_logic_vector (0 downto 0);
-signal addra_1  : std_logic_vector (15 downto 0);
+signal addra_1  : std_logic_vector (N-3 downto 0);
 signal dina_1   : std_logic_vector (19 downto 0);
 signal douta_1  : std_logic_vector (19 downto 0);
 
 signal ena_2    : std_logic;
 signal wea_2    : std_logic_vector (0 downto 0);
-signal addra_2  : std_logic_vector (15 downto 0);
+signal addra_2  : std_logic_vector (N-3 downto 0);
 signal dina_2   : std_logic_vector (19 downto 0);
 signal douta_2  : std_logic_vector (19 downto 0);
 
 signal ena_3    : std_logic;
 signal wea_3    : std_logic_vector (0 downto 0);
-signal addra_3  : std_logic_vector (15 downto 0);
+signal addra_3  : std_logic_vector (N-3 downto 0);
 signal dina_3   : std_logic_vector (19 downto 0);
 signal douta_3  : std_logic_vector (19 downto 0);
 
