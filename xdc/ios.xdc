@@ -542,3 +542,12 @@ set_property IOSTANDARD LVCMOS33 [get_ports VOLT_SW_DOUT]
 set_property PACKAGE_PIN B20 [get_ports VOLT_SW_LEn]
 set_property IOSTANDARD LVCMOS33 [get_ports VOLT_SW_LEn]
 
+# Properties for Bitstream generation for external Flash usage.
+set_property BITSTREAM.CONFIG.SPI_32BIT_ADDR YES [current_design]
+set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+set_property BITSTREAM.CONFIG.SPI_FALL_EDGE YES [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
+set_property CFGBVS VCCO [current_design]
+set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+set_property BITSTREAM.CONFIG.EXTMASTERCCLK_EN DISABLE [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 40 [current_design]
