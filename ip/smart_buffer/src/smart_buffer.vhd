@@ -302,49 +302,14 @@ component control_fsm is
 end component;
 
 -- Memories.
-COMPONENT smart_mem_0
-  PORT (
-    clka : IN STD_LOGIC;
-    ena : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
-  );
-END COMPONENT;
-
-COMPONENT smart_mem_1
-  PORT (
-    clka : IN STD_LOGIC;
-    ena : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
-  );
-END COMPONENT;
-
-COMPONENT smart_mem_2
-  PORT (
-    clka : IN STD_LOGIC;
-    ena : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
-  );
-END COMPONENT;
-
-COMPONENT smart_mem_3
-  PORT (
-    clka : IN STD_LOGIC;
-    ena : IN STD_LOGIC;
-    wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
-    addra : IN STD_LOGIC_VECTOR(N-3 DOWNTO 0);
-    dina : IN STD_LOGIC_VECTOR(19 DOWNTO 0);
-    douta : OUT STD_LOGIC_VECTOR(19 DOWNTO 0)
-  );
-END COMPONENT;
+component smart_mem_dummy is
+    Port ( clka : in STD_LOGIC;
+           ena : in STD_LOGIC;
+           wea : in STD_LOGIC_VECTOR (0 downto 0);
+           addra : in STD_LOGIC_VECTOR (14 downto 0);
+           dina : in STD_LOGIC_VECTOR (19 downto 0);
+           douta : in STD_LOGIC_VECTOR (19 downto 0));
+end component;
 
 -- Capture signals.
 signal capture_start_cha    : std_logic;
@@ -797,7 +762,7 @@ control_fsm_i : control_fsm
         );
         
 -- Memory buffer 0.                 
-smart_mem_0_i : smart_mem_0
+smart_mem_0_i : smart_mem_dummy
     PORT MAP 
         (
         clka    => clk,
@@ -809,7 +774,7 @@ smart_mem_0_i : smart_mem_0
   );
 
 -- Memory buffer 1.  
-smart_mem_1_i : smart_mem_1
+smart_mem_1_i : smart_mem_dummy
     PORT MAP 
         (
         clka    => clk,
@@ -821,7 +786,7 @@ smart_mem_1_i : smart_mem_1
         );
 
 -- Memory buffer 2.
-smart_mem_2_i : smart_mem_2
+smart_mem_2_i : smart_mem_dummy
     PORT MAP 
         (
         clka    => clk,
@@ -833,7 +798,7 @@ smart_mem_2_i : smart_mem_2
         );
 
 -- Memory buffer 3.  
-smart_mem_3_i : smart_mem_3
+smart_mem_3_i : smart_mem_dummy
     PORT MAP 
         (
         clka    => clk,
