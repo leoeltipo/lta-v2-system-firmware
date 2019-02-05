@@ -302,13 +302,20 @@ component control_fsm is
 end component;
 
 -- Memories.
-component smart_mem_dummy is
-    Port ( clka : in STD_LOGIC;
-           ena : in STD_LOGIC;
-           wea : in STD_LOGIC_VECTOR (0 downto 0);
-           addra : in STD_LOGIC_VECTOR (14 downto 0);
-           dina : in STD_LOGIC_VECTOR (19 downto 0);
-           douta : in STD_LOGIC_VECTOR (19 downto 0));
+component smart_mem is
+    Generic 
+        (
+            N : integer := 16
+        );
+    Port 
+        ( 
+            clka    : in STD_LOGIC;
+            ena     : in STD_LOGIC;
+            wea     : in STD_LOGIC_VECTOR (0 downto 0);
+            addra   : in STD_LOGIC_VECTOR (N-1 downto 0);
+            dina    : in STD_LOGIC_VECTOR (19 downto 0);
+            douta   : out STD_LOGIC_VECTOR (19 downto 0)
+        );        
 end component;
 
 -- Capture signals.
@@ -761,53 +768,69 @@ control_fsm_i : control_fsm
         mem_dout_3              => douta_3		
         );
         
--- Memory buffer 0.                 
-smart_mem_0_i : smart_mem_dummy
-    PORT MAP 
-        (
-        clka    => clk,
-        ena     => ena_0,
-        wea     => wea_0,
-        addra   => addra_0,
-        dina    => dina_0,
-        douta   => douta_0
-  );
+-- Memory buffer 0.
+smart_mem_0_i : smart_mem
+      Generic map 
+          (
+              N => N-2
+          )
+      Port map
+          ( 
+              clka    => clk,
+              ena     => ena_0, 
+              wea     => wea_0,
+              addra   => addra_0,
+              dina    => dina_0,
+              douta   => douta_0
+          );
 
--- Memory buffer 1.  
-smart_mem_1_i : smart_mem_dummy
-    PORT MAP 
-        (
-        clka    => clk,
-        ena     => ena_1,
-        wea     => wea_1,
-        addra   => addra_1,
-        dina    => dina_1,
-        douta   => douta_1
-        );
+-- Memory buffer 1.
+smart_mem_1_i : smart_mem
+      Generic map 
+          (
+              N => N-2
+          )
+      Port map
+          ( 
+              clka    => clk,
+              ena     => ena_1, 
+              wea     => wea_1,
+              addra   => addra_1,
+              dina    => dina_1,
+              douta   => douta_1
+          );
 
 -- Memory buffer 2.
-smart_mem_2_i : smart_mem_dummy
-    PORT MAP 
-        (
-        clka    => clk,
-        ena     => ena_2,
-        wea     => wea_2,
-        addra   => addra_2,
-        dina    => dina_2,
-        douta   => douta_2
-        );
+smart_mem_2_i : smart_mem
+      Generic map 
+          (
+              N => N-2
+          )
+      Port map
+          ( 
+              clka    => clk,
+              ena     => ena_2, 
+              wea     => wea_2,
+              addra   => addra_2,
+              dina    => dina_2,
+              douta   => douta_2
+          );
 
--- Memory buffer 3.  
-smart_mem_3_i : smart_mem_dummy
-    PORT MAP 
-        (
-        clka    => clk,
-        ena     => ena_3,
-        wea     => wea_3,
-        addra   => addra_3,
-        dina    => dina_3,
-        douta   => douta_3
-        );
+-- Memory buffer 3.
+smart_mem_3_i : smart_mem
+      Generic map 
+          (
+              N => N-2
+          )
+      Port map
+          ( 
+              clka    => clk,
+              ena     => ena_3, 
+              wea     => wea_3,
+              addra   => addra_3,
+              dina    => dina_3,
+              douta   => douta_3
+          );
 
 end Behavioral;
 

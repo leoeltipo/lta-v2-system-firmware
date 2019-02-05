@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 01/28/2019 02:38:45 PM
+-- Create Date: 02/04/2019 09:16:43 AM
 -- Design Name: 
--- Module Name: smart_mem_dummy - Behavioral
+-- Module Name: smart_mem - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -21,17 +21,14 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity smart_mem_dummy is
+entity smart_mem is
     Generic 
         (
             N : integer := 16
@@ -45,11 +42,36 @@ entity smart_mem_dummy is
             dina    : in STD_LOGIC_VECTOR (19 downto 0);
             douta   : out STD_LOGIC_VECTOR (19 downto 0)
         );        
-end smart_mem_dummy;
+end smart_mem;
 
-architecture Behavioral of smart_mem_dummy is
+architecture Behavioral of smart_mem is
+
+type ram_type is array (2**N-1 downto 0) of std_logic_vector (19 downto 0);
+signal RAM : ram_type;
+
+signal douta_i : std_logic_vector (19 downto 0);
 
 begin
 
+-- Data write process.
+process (clka)
+begin
+    if (clka'event and clka = '1') then
+        if (ena = '1') then
+            if (wea(0) = '1') then
+                RAM(conv_integer(addra)) <= dina;
+            end if;
+            douta_i <= RAM(conv_integer(addra));
+        end if;
+    end if;
+end process;
+
+-- Output register.
+process (clka)
+begin
+    if (clka'event and clka = '1') then
+        douta <= douta_i;
+    end if;
+end process;
 
 end Behavioral;

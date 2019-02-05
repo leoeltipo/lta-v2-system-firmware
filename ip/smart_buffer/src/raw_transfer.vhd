@@ -147,6 +147,7 @@ signal cnt_delay : unsigned (15 downto 0);
 type fsm_state is ( INIT_ST,
                     COMPUTE_PTR_ST,
                     READ_IN_ST,
+                    READ_IN_PIPE_ST,
                     WRITE_OUT_ST,
 					WAIT_DELAY_ST,
                     SEND_EOT_ST,
@@ -158,6 +159,7 @@ signal current_state, next_state : fsm_state;
 signal init_state           : std_logic;
 signal compute_ptr_state    : std_logic;
 signal read_in_state        : std_logic;
+signal read_in_pipe_state   : std_logic;
 signal write_out_state      : std_logic;
 signal wait_delay_state     : std_logic;
 
@@ -330,10 +332,10 @@ begin
 	       
 	       -- Reset samples counter.
 	       cnt_nsamp <= (others => '0');
-	   elsif ( read_in_state = '1' ) then
+	   elsif ( read_in_pipe_state = '1' ) then
 	       cnt_nsamp   <= cnt_nsamp + 1;
 	       cnt_delay   <= (others => '0');	       
-	       ptr_r <= ptr_r + 1;	             
+	       ptr_r <= ptr_r + 1;	       	             
 	   elsif ( write_out_state = '1' ) then
 	       data_out_r <= data_out_i;
 	   elsif ( wait_delay_state = '1' ) then
@@ -366,6 +368,13 @@ begin
             if ( RESET_REG_r = '1' ) then
                 next_state <= INIT_ST;
             else                
+                next_state <= READ_IN_PIPE_ST;
+            end if;
+            
+        when READ_IN_PIPE_ST =>
+            if ( RESET_REG_r = '1' ) then
+                next_state <= INIT_ST;
+            else
                 next_state <= WRITE_OUT_ST;
             end if;
         
@@ -431,6 +440,7 @@ begin
 init_state          <= '0';
 compute_ptr_state   <= '0';
 read_in_state       <= '0';
+read_in_pipe_state  <= '0';
 write_out_state     <= '0';
 wait_delay_state    <= '0';
 eot_i               <= '0';
@@ -439,6 +449,7 @@ eot_i               <= '0';
 			init_state          <= '1';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';
 			eot_i               <= '0';
@@ -447,6 +458,7 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '1';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';			
 			eot_i               <= '0';		
@@ -455,14 +467,25 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '1';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';
 			eot_i               <= '0';
-			
+						
+	    when READ_IN_PIPE_ST =>       
+            init_state          <= '0';
+            compute_ptr_state   <= '0';
+            read_in_state       <= '0';
+            read_in_pipe_state  <= '1';
+            write_out_state     <= '0';
+            wait_delay_state    <= '0';
+            eot_i               <= '0';
+            
         when WRITE_OUT_ST =>
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '1';
 			wait_delay_state    <= '0';
 			eot_i               <= '0';		
@@ -471,6 +494,7 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '1';
 			eot_i               <= '0';
@@ -479,6 +503,7 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';
 			eot_i               <= '1';		
@@ -487,6 +512,7 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';
 			eot_i               <= '0';		
@@ -495,6 +521,7 @@ eot_i               <= '0';
 			init_state          <= '0';
 			compute_ptr_state   <= '0';
 			read_in_state       <= '0';
+			read_in_pipe_state  <= '0';
 			write_out_state     <= '0';
 			wait_delay_state    <= '0';
 			eot_i               <= '0';		

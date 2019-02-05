@@ -228,7 +228,8 @@ architecture arch_imp of smart_buffer_v1_0_S00_AXI is
             );
     end component;
     
-    constant N                  : integer := 17;
+    -- Number of bits of complete memory map.
+    constant N                  : integer := 16;
     
     signal rst                  : std_logic;
     signal capture_end_reg_i    : std_logic;

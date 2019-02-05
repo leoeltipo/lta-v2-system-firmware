@@ -38,6 +38,11 @@ end tb;
 architecture Behavioral of tb is
 
 component smart_buffer is
+    Generic 
+        (
+        -- Number of bits of total memory space.
+        N   : integer := 18
+        );
     Port 
         ( 
         -- Reset and clock.
@@ -61,18 +66,18 @@ component smart_buffer is
         data_in_d           : in STD_LOGIC_VECTOR (17 downto 0);
         
         -- Header.
-        header              : in STD_LOGIC_VECTOR (1 downto 0);        
+        header              : in STD_LOGIC_VECTOR (1 downto 0);
         
         -- Registers.        
         CHA_SEL_REG         : in STD_LOGIC_VECTOR (1 downto 0);
         CHB_SEL_REG         : in STD_LOGIC_VECTOR (1 downto 0);
         CHC_SEL_REG         : in STD_LOGIC_VECTOR (1 downto 0);
         CHD_SEL_REG         : in STD_LOGIC_VECTOR (1 downto 0);
-        CHA_NSAMP_REG       : in STD_LOGIC_VECTOR (17 downto 0);
-        CHB_NSAMP_REG       : in STD_LOGIC_VECTOR (17 downto 0);
-        CHC_NSAMP_REG       : in STD_LOGIC_VECTOR (17 downto 0);
-        CHD_NSAMP_REG       : in STD_LOGIC_VECTOR (17 downto 0);    
-        CH_MODE_REG         : in STD_LOGIC_VECTOR (1 downto 0);   
+        CHA_NSAMP_REG       : in STD_LOGIC_VECTOR (N-1 downto 0);
+        CHB_NSAMP_REG       : in STD_LOGIC_VECTOR (N-1 downto 0);
+        CHC_NSAMP_REG       : in STD_LOGIC_VECTOR (N-1 downto 0);
+        CHD_NSAMP_REG       : in STD_LOGIC_VECTOR (N-1 downto 0);    
+        CH_MODE_REG         : in STD_LOGIC_VECTOR (1 downto 0);     
         DATAA_MODE_REG      : in STD_LOGIC;        
         DATAB_MODE_REG      : in STD_LOGIC;
         DATAC_MODE_REG      : in STD_LOGIC;
@@ -92,6 +97,9 @@ component smart_buffer is
         );
 end component;
 
+-- Number of bits of complete memory map.
+constant N                  : integer := 8;
+    
 -- Reset and clock.
 signal rst                 : STD_LOGIC := '0';
 signal clk                 : STD_LOGIC := '0';
@@ -120,10 +128,10 @@ signal CHA_SEL_REG         : STD_LOGIC_VECTOR (1 downto 0) := "00";
 signal CHB_SEL_REG         : STD_LOGIC_VECTOR (1 downto 0) := "01";
 signal CHC_SEL_REG         : STD_LOGIC_VECTOR (1 downto 0) := "10";
 signal CHD_SEL_REG         : STD_LOGIC_VECTOR (1 downto 0) := "11";
-signal CHA_NSAMP_REG       : STD_LOGIC_VECTOR (17 downto 0) := "000000000000000000";
-signal CHB_NSAMP_REG       : STD_LOGIC_VECTOR (17 downto 0) := "000000000000000000";
-signal CHC_NSAMP_REG       : STD_LOGIC_VECTOR (17 downto 0) := "000000000000000000";
-signal CHD_NSAMP_REG       : STD_LOGIC_VECTOR (17 downto 0) := "000000000000000000";    
+signal CHA_NSAMP_REG       : STD_LOGIC_VECTOR (N-1 downto 0) := (others => '0');
+signal CHB_NSAMP_REG       : STD_LOGIC_VECTOR (N-1 downto 0) := (others => '0');
+signal CHC_NSAMP_REG       : STD_LOGIC_VECTOR (N-1 downto 0) := (others => '0');
+signal CHD_NSAMP_REG       : STD_LOGIC_VECTOR (N-1 downto 0) := (others => '0');    
 signal CH_MODE_REG         : STD_LOGIC_VECTOR (1 downto 0) := "00";
 signal DATAA_MODE_REG      : STD_LOGIC := '0';        
 signal DATAB_MODE_REG      : STD_LOGIC := '0';
@@ -145,6 +153,11 @@ signal data_out            : STD_LOGIC_VECTOR (21 downto 0);
 begin
 
 smart_buffer_i : smart_buffer
+    Generic map
+        (
+        -- Number of bits of total memory space.
+        N   => N
+        )
     Port map
         ( 
         -- Reset and clock.
@@ -292,7 +305,7 @@ smart_buffer_i : smart_buffer
         -- Start.
         CAPTURE_START_REG <= '1';
         
-        wait for 500 ns;
+        --wait for 500 ns;
         
         -- End.
         --CAPTURE_START_REG <= '0';		  
@@ -300,6 +313,7 @@ smart_buffer_i : smart_buffer
         wait until CAPTURE_END_REG = '1';
         
         -- Transfer.
+        CAPTURE_START_REG <= '0';
         TRANSFER_START_REG <= '1';
         wait until TRANSFER_END_REG <= '1';
         TRANSFER_START_REG <= '0';		
