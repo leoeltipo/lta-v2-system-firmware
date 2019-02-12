@@ -16,7 +16,7 @@ Version including:
 * LDOs controller for configuring bias voltages.
 * DAC controller for setting low and high voltages of clock signals.
 * Voltage switch controller for allowing enable/disable of bias voltages to 50-pin connector.
-* Smart Buffer: not working. Logic completely included but empty memory block due to Vivado error.
+* Smart Buffer: fixed block with 64 KSamples of memory (total).
 
 After configuring from FLASH, the microblaze software will read the board information from the flash memory and configure the lower byte of the IP address. This will change both the lower byte of the MAC and IP addresses of the board. This behaviour can be overriden using the variable ipLow with the standard set command.
 
