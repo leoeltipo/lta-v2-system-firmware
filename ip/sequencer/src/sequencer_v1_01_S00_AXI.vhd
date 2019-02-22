@@ -16,7 +16,9 @@ entity sequencer_v1_01_S00_AXI is
 	);
 	port (
 		-- Users to add ports here
-        seq_port_out : out std_logic_vector(31 downto 0);
+		clk           : in std_logic;
+		stop_sync     : in std_logic;
+        seq_port_out  : out std_logic_vector(31 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
 
@@ -122,17 +124,38 @@ architecture arch_imp of sequencer_v1_01_S00_AXI is
 	signal byte_index	: integer;
 
     ---user signals---
+    signal stop_reg         : std_logic;
+    signal stop_reg_sync    : std_logic;
+    signal eos_reg          : std_logic;
+    signal eos_reg_sync     : std_logic;
+    signal stop_src_reg     : std_logic;
+    signal stop_src_reg_sync: std_logic;
+    signal stop_sync_sync   : std_logic;
+    signal stop_i           : std_logic;        
     
-    signal rst_mc_signal : std_logic;
+    signal rst_i        : std_logic;
     
-    signal eos_signal:  std_logic;
+    signal rst_mc_signal: std_logic;
     
     signal memory_data_out : std_logic_vector(31 downto 0);
     signal memory_data_out_axi : std_logic_vector(31 downto 0);
     signal memory_addr_b        : std_logic_vector(31 downto 0);
                 
-    
+    --------------------------------------------------
+    --- Re-sync component
+    --------------------------------------------------    
 
+    component synchronizer is 
+	generic (
+		N : Integer := 2
+	);
+	port (
+		rst		    : in std_logic;
+		clk 		: in std_logic;
+		data_in		: in std_logic;
+		data_out	: out std_logic
+	);
+    end component;
 
     --------------------------------------------------
     --- Sequencer microcontroler component
@@ -435,7 +458,7 @@ begin
 	-- and the slave is ready to accept the read address.
 	slv_reg_rden <= axi_arready and S_AXI_ARVALID and (not axi_rvalid) ;
 
-	process (slv_reg0, eos_signal, slv_reg2, slv_reg3, slv_reg4, memory_data_out_axi, slv_reg6, slv_reg7, axi_araddr, S_AXI_ARESETN, slv_reg_rden)
+	process (slv_reg0, eos_reg_sync, slv_reg2, slv_reg3, slv_reg4, memory_data_out_axi, slv_reg6, slv_reg7, axi_araddr, S_AXI_ARESETN, slv_reg_rden)
 	variable loc_addr :std_logic_vector(OPT_MEM_ADDR_BITS downto 0);
 	begin
 	    -- Address decoding for reading registers
@@ -444,7 +467,7 @@ begin
 	      when b"000" =>
 	        reg_data_out <= slv_reg0;
 	      when b"001" =>
-	        reg_data_out <= x"0000000" & "000" & eos_signal;
+	        reg_data_out <= x"0000000" & "000" & eos_reg_sync;
 	      when b"010" =>
 	        reg_data_out <= slv_reg2;
 	      when b"011" =>
@@ -484,12 +507,12 @@ begin
 	-- Add user logic here
 	
 	mc0 : mc
-port map (clock_mc => S_AXI_ACLK, 
+port map (clock_mc => clk, 
             rst_mc => rst_mc_signal,
             mdata_out => memory_data_out,
             
             maddr_in => memory_addr_b,
-            eos     => eos_signal,
+            eos     => eos_reg,
             output => seq_port_out);
             
             
@@ -501,17 +524,75 @@ port map (clock_mc => S_AXI_ACLK,
             addra => slv_reg3 (7 downto 0),
             dina => slv_reg4,
             douta => memory_data_out_axi,
-            clkb => S_AXI_ACLK,
+            clkb => clk,
             enb => '1',
             web(0) => '0',
             addrb => memory_addr_b(7 downto 0),
             dinb => (others => '0'),
             doutb => memory_data_out
           );
-                    
-       
-
-rst_mc_signal <= not(slv_reg0(0));
+    
+    -- Assign registers to internal signals.
+    stop_reg <= slv_reg0(0);
+    -- eos_reg: output from mc.
+    stop_src_reg <= slv_reg6(0);
+    
+    -- stop resync: axi clk to clk domain.
+    stop_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst_i,
+        clk         => clk,
+        data_in     => stop_reg,
+        data_out    => stop_reg_sync
+    );  
+    
+    -- eos resync: clk to axi clk domain.
+    eos_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst_i,
+        clk         => S_AXI_ACLK,
+        data_in     => eos_reg,
+        data_out    => eos_reg_sync
+    );
+    
+    -- stop_src resync: axi clk (10 MHz) to clk domain.
+    stop_src_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst_i,
+        clk         => clk,
+        data_in     => stop_src_reg,
+        data_out    => stop_src_reg_sync
+    );
+    
+    -- stop_sync resync: external port (10 MHz) to clk.
+    stop_sync_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst_i,
+        clk         => clk,
+        data_in     => stop_sync,
+        data_out    => stop_sync_sync
+    );
+   
+    -- Internal reset.
+    rst_i <= not(S_AXI_ARESETN);
+    
+    -- Mux for sequencer stop signal.
+    stop_i <=   stop_reg_sync when stop_src_reg_sync = '0' else
+                stop_sync_sync;
+                
+    rst_mc_signal <= not(stop_i);
 
 	-- User logic ends
 

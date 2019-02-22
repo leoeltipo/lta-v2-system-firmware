@@ -16,6 +16,8 @@ entity sequencer_v1_01 is
 	);
 	port (
 		-- Users to add ports here
+        clk             : in std_logic;
+        stop_sync       : in std_logic;		
         seq_port_out    : out std_logic_vector(31 downto 0);
 		-- User ports ends
 		-- Do not modify the ports beyond this line
@@ -55,7 +57,9 @@ architecture arch_imp of sequencer_v1_01 is
 		C_S_AXI_ADDR_WIDTH	: integer	:= 5
 		);
 		port (
-		seq_port_out : out std_logic_vector(31 downto 0);
+		clk          : in std_logic;
+		stop_sync     : in std_logic;
+		seq_port_out : out std_logic_vector(31 downto 0);		
 		S_AXI_ACLK	: in std_logic;
 		S_AXI_ARESETN	: in std_logic;
 		S_AXI_AWADDR	: in std_logic_vector(C_S_AXI_ADDR_WIDTH-1 downto 0);
@@ -89,8 +93,10 @@ sequencer_v1_01_S00_AXI_inst : sequencer_v1_01_S00_AXI
 		C_S_AXI_ADDR_WIDTH	=> C_S00_AXI_ADDR_WIDTH
 	)
 	port map (
-	    seq_port_out => seq_port_out,
-		S_AXI_ACLK	=> s00_axi_aclk,
+	    clk             => clk,
+	    stop_sync       => stop_sync,
+	    seq_port_out    => seq_port_out,	    
+		S_AXI_ACLK	    => s00_axi_aclk,
 		S_AXI_ARESETN	=> s00_axi_aresetn,
 		S_AXI_AWADDR	=> s00_axi_awaddr,
 		S_AXI_AWPROT	=> s00_axi_awprot,
