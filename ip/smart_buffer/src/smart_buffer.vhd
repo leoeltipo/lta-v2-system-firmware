@@ -302,7 +302,7 @@ component control_fsm is
 end component;
 
 -- Memories.
-component smart_mem is
+component smart_mem_dummy is
     Generic 
         (
             N : integer := 16
@@ -769,7 +769,7 @@ control_fsm_i : control_fsm
         );
         
 -- Memory buffer 0.
-smart_mem_0_i : smart_mem
+smart_mem_0_i : smart_mem_dummy
       Generic map 
           (
               N => N-2
@@ -785,7 +785,7 @@ smart_mem_0_i : smart_mem
           );
 
 -- Memory buffer 1.
-smart_mem_1_i : smart_mem
+smart_mem_1_i : smart_mem_dummy
       Generic map 
           (
               N => N-2
@@ -801,7 +801,7 @@ smart_mem_1_i : smart_mem
           );
 
 -- Memory buffer 2.
-smart_mem_2_i : smart_mem
+smart_mem_2_i : smart_mem_dummy
       Generic map 
           (
               N => N-2
@@ -817,7 +817,7 @@ smart_mem_2_i : smart_mem
           );
 
 -- Memory buffer 3.
-smart_mem_3_i : smart_mem
+smart_mem_3_i : smart_mem_dummy
       Generic map 
           (
               N => N-2

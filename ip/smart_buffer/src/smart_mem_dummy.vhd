@@ -51,5 +51,11 @@ architecture Behavioral of smart_mem_dummy is
 
 begin
 
+process (clka)
+begin
+    if (clka'event and clka = '1') then
+        douta <= dina;
+    end if;
+end process;
 
 end Behavioral;
