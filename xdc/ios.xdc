@@ -234,26 +234,26 @@ set_property IOSTANDARD LVCMOS25 [get_ports ADC_D_TWO_LANES]
 # SYNC_OUT (A_IO).
 set_property PACKAGE_PIN F15 [get_ports SYNC_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT]
-set_property PACKAGE_PIN A13 [get_ports SYNC_OUT_DIR]
-set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT_DIR]
+#set_property PACKAGE_PIN A13 [get_ports SYNC_OUT_DIR]
+#set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT_DIR]
 
 # SYNC_IN (B_IO).
 set_property PACKAGE_PIN E17 [get_ports SYNC_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN]
-set_property PACKAGE_PIN B16 [get_ports SYNC_IN_DIR]
-set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN_DIR]
+#set_property PACKAGE_PIN B16 [get_ports SYNC_IN_DIR]
+#set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN_DIR]
 
 # CLK_OUT (C_IO).
 set_property PACKAGE_PIN F18 [get_ports CLK_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT]
-set_property PACKAGE_PIN E16 [get_ports CLK_OUT_DIR]
-set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT_DIR]
+#set_property PACKAGE_PIN E16 [get_ports CLK_OUT_DIR]
+#set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT_DIR]
 
 # CLK_IN (D_IO).
 set_property PACKAGE_PIN C19 [get_ports CLK_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN]
-set_property PACKAGE_PIN F19 [get_ports CLK_IN_DIR]
-set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN_DIR]
+#set_property PACKAGE_PIN F19 [get_ports CLK_IN_DIR]
+#set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN_DIR]
 set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {CLK_IN_IBUF}]
 
 set_property PACKAGE_PIN F14 [get_ports DIGPOT_DIN]
