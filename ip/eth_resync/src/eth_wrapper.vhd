@@ -70,7 +70,7 @@ port (
 --        b_enable=>open,
 
         -- Added to allow setting IP from port.
-        user_addr				: in    std_logic_vector (7 downto 0);
+        user_addr				: in    std_logic_vector (31 downto 0);
  	
         rx_addr_user		:out 	std_logic_vector(31 downto 0);
         rx_data_user		:out 	std_logic_vector(63 downto 0);

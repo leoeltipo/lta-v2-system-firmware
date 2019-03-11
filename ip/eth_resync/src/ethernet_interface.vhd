@@ -41,7 +41,8 @@ entity ethernet_interface is
           b_enable             	: out   std_logic;
           
           -- Added to allow setting IP from port.
-          user_addr				: in    std_logic_vector (7 downto 0); 				  		  															 				   
+          --user_addr				: in    std_logic_vector (7 downto 0); 				  		  															 				   
+          user_addr				: in    std_logic_vector (31 downto 0);
 --erased for simple interface  	
 		  
 		  
@@ -121,11 +122,15 @@ architecture BEHAVIORAL of ethernet_interface is
 	signal arp_announce				: std_logic := '0';  	
 	signal arp_announce_sig 		: std_logic;
 	signal burst_mode				: std_logic := '0';
-	signal self_addr				: std_logic_vector(23 downto 0) := x"C0A885";	 --192.168.133.X;  
-	signal self_mac 				: std_logic_vector(39 downto 0) := x"008055EC00";                
+	--signal self_addr				: std_logic_vector(23 downto 0) := x"C0A885";	 --192.168.133.X;  
+	signal self_addr_default		: std_logic_vector(31 downto 0) := x"C0A88507";	 --192.168.133.7;
+	signal self_addr		        : std_logic_vector(31 downto 0);
+	--signal self_mac 				: std_logic_vector(39 downto 0) := x"008055EC00";                
+	signal self_mac_default			: std_logic_vector(47 downto 0) := x"008055EC0007";
+	signal self_mac			        : std_logic_vector(47 downto 0);
 	signal self_port				: std_logic_vector(15 downto 0) := ETH_CONTROLLER_DEFAULT_PORT;							                
-	signal user_addr_byte			: std_logic_vector(7 downto 0)  := ETH_CONTROLLER_DEFAULT_ADDR;	
-	signal user_addr_sig			: std_logic_vector(7 downto 0)  := ETH_CONTROLLER_DEFAULT_ADDR;	
+	--signal user_addr_byte			: std_logic_vector(7 downto 0)  := ETH_CONTROLLER_DEFAULT_ADDR;		
+	--signal user_addr_sig			: std_logic_vector(7 downto 0)  := ETH_CONTROLLER_DEFAULT_ADDR;		
 	signal tx_data_dest_addr 		: std_logic_vector(31 downto 0);
 	signal tx_data_dest_mac 		: std_logic_vector(47 downto 0);
 	signal tx_data_dest_port 		: std_logic_vector(15 downto 0);
@@ -171,10 +176,8 @@ begin
 				
                 reset=>reset,	
 										   	   
-                self_addr(31 downto 8)=>self_addr,
-				self_addr(7 downto 0)=>user_addr_sig,
-                self_mac(47 downto 8)=>self_mac,	  				  
-                self_mac(7 downto 0)=>user_addr_sig,	  
+                self_addr=>self_addr,				
+                self_mac=>self_mac,	  				                  	  
                 self_port=>self_port,	  
 				arp_announce=>arp_announce,
 				arp_busy=>arp_busy, 
@@ -306,9 +309,12 @@ begin
 		if (rising_edge(MASTER_CLK)) then 		
 			
 			if(unsigned(user_addr) = 0) then --take internally if user_addr is 0	 
-				user_addr_sig <= user_addr_byte;
+				--user_addr_sig <= user_addr_byte;
+				self_addr <= self_addr_default;
+				self_mac  <= self_mac_default;
 			else
-				user_addr_sig <= user_addr;		 
+				self_addr <= user_addr;
+				self_mac  <= self_mac_default (47 downto 32) & user_addr;		 
 			end if;				
 			
 			internal_eth_dout <= (others => '0');
@@ -318,16 +324,16 @@ begin
 		
 			if ( ots_wren = '1' and  				-- WRITE eth ===========
 				 ots_block_sel = x"1") then -- Ethernet block address space
-				if ( ots_block_addr = x"0" ) then 
-					 self_addr <= ots_din(23 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( ots_block_addr = x"1" ) then 
-					 user_addr_byte <= ots_din(7 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( ots_block_addr = x"2" ) then 
-					 self_mac <= ots_din(39 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( ots_block_addr = x"3" ) then 
+--				if ( ots_block_addr = x"0" ) then 
+--					 self_addr <= ots_din(23 downto 0); 
+--					 arp_announce_sig <= '1';
+--				elsif ( ots_block_addr = x"1" ) then 
+--					 user_addr_byte <= ots_din(7 downto 0); 
+--					 arp_announce_sig <= '1';
+--				elsif ( ots_block_addr = x"2" ) then 
+--					 self_mac <= ots_din(39 downto 0); 
+--					 arp_announce_sig <= '1';
+				if ( ots_block_addr = x"3" ) then 
 					 tx_ctrl_dest_addr <= ots_din(31 downto 0); 
 					 ctrl_addr_resolve <= '1';
 				elsif ( ots_block_addr = x"4" ) then 
@@ -352,16 +358,16 @@ begin
 				end if;
 			elsif ( internal_we = '1' and  				-- WRITE internal ===========
 				 unsigned(internal_block_sel) = x"1") then -- Ethernet block address space
-				if ( unsigned(internal_addr) = x"0" ) then 
-					 self_addr <= internal_din(23 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( unsigned(internal_addr) = x"1" ) then 
-					 user_addr_byte <= internal_din(7 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( unsigned(internal_addr) = x"2" ) then 
-					 self_mac <= internal_din(39 downto 0); 
-					 arp_announce_sig <= '1';
-				elsif ( unsigned(internal_addr) = x"3" ) then 
+--				if ( unsigned(internal_addr) = x"0" ) then 
+--					 self_addr <= internal_din(23 downto 0); 
+--					 arp_announce_sig <= '1';
+--				elsif ( unsigned(internal_addr) = x"1" ) then 
+--					 user_addr_byte <= internal_din(7 downto 0); 
+--					 arp_announce_sig <= '1';
+--				elsif ( unsigned(internal_addr) = x"2" ) then 
+--					 self_mac <= internal_din(39 downto 0); 
+--					 arp_announce_sig <= '1';
+				if ( unsigned(internal_addr) = x"3" ) then 
 					 tx_ctrl_dest_addr <= internal_din(31 downto 0); 
 					 ctrl_addr_resolve <= '1';
 				elsif ( unsigned(internal_addr) = x"4" ) then 
@@ -397,11 +403,11 @@ begin
 			if ( ots_rden = '1' and  				-- READ eth ===========
 				 ots_block_sel = x"1") then -- Ethernet block address space
 				if ( ots_block_addr = x"0" ) then 
-					 internal_eth_dout(23 downto 0) <= self_addr; 
+					 internal_eth_dout(31 downto 0) <= self_addr; 
 				elsif ( ots_block_addr = x"1" ) then 
-					 internal_eth_dout(7 downto 0) <= user_addr_byte; 
+					 internal_eth_dout(31 downto 0) <= self_addr; 
 				elsif ( ots_block_addr = x"2" ) then 
-					 internal_eth_dout(39 downto 0) <= self_mac; 
+					 internal_eth_dout(47 downto 0) <= self_mac; 
 				elsif ( ots_block_addr = x"3" ) then 
 					 internal_eth_dout(31 downto 0) <= tx_ctrl_dest_addr; 
 				elsif ( ots_block_addr = x"4" ) then 
@@ -428,11 +434,11 @@ begin
 			if ( 				-- always READ internal ===========
 				 unsigned(internal_block_sel) = x"1") then -- Ethernet block address space
 				if ( unsigned(internal_addr) = x"0" ) then 
-					 internal_dout(23 downto 0) <= self_addr; 
+					 internal_dout(31 downto 0) <= self_addr; 
 				elsif ( unsigned(internal_addr) = x"1" ) then 
-					 internal_dout(7 downto 0) <= user_addr_byte; 
+					 internal_dout(31 downto 0) <= self_addr; 
 				elsif ( unsigned(internal_addr) = x"2" ) then 
-					 internal_dout(39 downto 0) <= self_mac; 
+					 internal_dout(47 downto 0) <= self_mac; 
 				elsif ( unsigned(internal_addr) = x"3" ) then 
 					 internal_dout(31 downto 0) <= tx_ctrl_dest_addr; 
 				elsif ( unsigned(internal_addr) = x"4" ) then 

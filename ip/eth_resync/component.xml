@@ -36,7 +36,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>144d6ce4</spirit:value>
+            <spirit:value>2a4193b9</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -52,7 +52,7 @@
         <spirit:parameters>
           <spirit:parameter>
             <spirit:name>viewChecksum</spirit:name>
-            <spirit:value>144d6ce4</spirit:value>
+            <spirit:value>2a4193b9</spirit:value>
           </spirit:parameter>
         </spirit:parameters>
       </spirit:view>
@@ -408,7 +408,7 @@
         <spirit:wire>
           <spirit:direction>in</spirit:direction>
           <spirit:vector>
-            <spirit:left spirit:format="long">7</spirit:left>
+            <spirit:left spirit:format="long">31</spirit:left>
             <spirit:right spirit:format="long">0</spirit:right>
           </spirit:vector>
           <spirit:wireTypeDefs>
@@ -664,7 +664,7 @@
       <spirit:file>
         <spirit:name>src/eth_resync.vhd</spirit:name>
         <spirit:fileType>vhdlSource</spirit:fileType>
-        <spirit:userFileType>CHECKSUM_4ca79e1e</spirit:userFileType>
+        <spirit:userFileType>CHECKSUM_ea13321a</spirit:userFileType>
         <spirit:userFileType>IMPORTED_FILE</spirit:userFileType>
       </spirit:file>
     </spirit:fileSet>
@@ -868,8 +868,8 @@
       </xilinx:taxonomies>
       <xilinx:displayName>eth_resync</xilinx:displayName>
       <xilinx:definitionSource>package_project</xilinx:definitionSource>
-      <xilinx:coreRevision>3</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2018-11-07T20:51:26Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>6</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2019-03-08T17:52:55Z</xilinx:coreCreationDateTime>
       <xilinx:tags>
         <xilinx:tag xilinx:name="fnal.gov:user:eth_resync:1.0_ARCHIVE_LOCATION">c:/v18.2/lta-v1-system-firmware/ip/eth_resync</xilinx:tag>
       </xilinx:tags>
@@ -877,8 +877,8 @@
     <xilinx:packagingInfo>
       <xilinx:xilinxVersion>2018.2</xilinx:xilinxVersion>
       <xilinx:checksum xilinx:scope="busInterfaces" xilinx:value="8057bd25"/>
-      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="59a7c599"/>
-      <xilinx:checksum xilinx:scope="ports" xilinx:value="57067f77"/>
+      <xilinx:checksum xilinx:scope="fileGroups" xilinx:value="7cc1a935"/>
+      <xilinx:checksum xilinx:scope="ports" xilinx:value="06777d2e"/>
       <xilinx:checksum xilinx:scope="parameters" xilinx:value="3d244c18"/>
     </xilinx:packagingInfo>
   </spirit:vendorExtensions>
