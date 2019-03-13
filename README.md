@@ -18,5 +18,4 @@ Version including:
 * Voltage switch controller for allowing enable/disable of bias voltages to 50-pin connector.
 * Smart Buffer: fixed block with 64 KSamples of memory (total).
 
-After configuring from FLASH, the microblaze software will read the board information from the flash memory and configure the lower byte of the IP address. This will change both the lower byte of the MAC and IP addresses of the board. This behaviour can be overriden using the variable ipLow with the standard set command.
-
+After configuring from FLASH, the microblaze software will read the board information from the flash memory. The IP address is part of that information, so the board will reconfigure the IP before starting the booting process. Switch 0 is also checked to decide if the system should enter on flash programming state. 
