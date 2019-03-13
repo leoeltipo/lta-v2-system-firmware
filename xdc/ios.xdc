@@ -234,27 +234,31 @@ set_property IOSTANDARD LVCMOS25 [get_ports ADC_D_TWO_LANES]
 # SYNC_OUT (A_IO).
 set_property PACKAGE_PIN F15 [get_ports SYNC_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT]
-#set_property PACKAGE_PIN A13 [get_ports SYNC_OUT_DIR]
-#set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT_DIR]
+set_property PACKAGE_PIN A13 [get_ports SYNC_OUT_DIR]
+set_property IOSTANDARD LVCMOS33 [get_ports SYNC_OUT_DIR]
 
 # SYNC_IN (B_IO).
 set_property PACKAGE_PIN E17 [get_ports SYNC_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN]
-#set_property PACKAGE_PIN B16 [get_ports SYNC_IN_DIR]
-#set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN_DIR]
+set_property PACKAGE_PIN B16 [get_ports SYNC_IN_DIR]
+set_property IOSTANDARD LVCMOS33 [get_ports SYNC_IN_DIR]
 
 # CLK_OUT (C_IO).
 set_property PACKAGE_PIN F18 [get_ports CLK_OUT]
 set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT]
-#set_property PACKAGE_PIN E16 [get_ports CLK_OUT_DIR]
-#set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT_DIR]
+set_property PACKAGE_PIN E16 [get_ports CLK_OUT_DIR]
+set_property IOSTANDARD LVCMOS33 [get_ports CLK_OUT_DIR]
 
 # CLK_IN (D_IO).
 set_property PACKAGE_PIN C19 [get_ports CLK_IN]
 set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN]
-#set_property PACKAGE_PIN F19 [get_ports CLK_IN_DIR]
-#set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN_DIR]
+set_property PACKAGE_PIN F19 [get_ports CLK_IN_DIR]
+set_property IOSTANDARD LVCMOS33 [get_ports CLK_IN_DIR]
 set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {CLK_IN_IBUF}]
+
+# Enable IO buffer.
+set_property PACKAGE_PIN F20 [get_ports EXT_IO_ENn]
+set_property IOSTANDARD LVCMOS33 [get_ports EXT_IO_ENn]
 
 set_property PACKAGE_PIN F14 [get_ports DIGPOT_DIN]
 set_property IOSTANDARD LVCMOS33 [get_ports DIGPOT_DIN]
@@ -376,8 +380,7 @@ set_property PACKAGE_PIN P21 [get_ports FLASH_D2]
 set_property IOSTANDARD LVCMOS33 [get_ports FLASH_D2]
 set_property PACKAGE_PIN R21 [get_ports FLASH_D3]
 set_property IOSTANDARD LVCMOS33 [get_ports FLASH_D3]
-#set_property PACKAGE_PIN F20 [get_ports EXT_IO_ENn]
-#set_property IOSTANDARD LVCMOS33 [get_ports EXT_IO_ENn]
+
 #set_property PACKAGE_PIN V20 [get_ports FAN_CTRL]
 #set_property IOSTANDARD LVCMOS33 [get_ports FAN_CTRL]
 #set_property PACKAGE_PIN L12 [get_ports FPGA_CCLK]
@@ -418,8 +421,8 @@ set_property IOSTANDARD LVCMOS33 [get_ports LED4]
 set_property PACKAGE_PIN M13 [get_ports LED5]
 set_property IOSTANDARD LVCMOS33 [get_ports LED5]
 
-#set_property PACKAGE_PIN AA20 [get_ports SPARE_SW0]
-#set_property IOSTANDARD LVCMOS33 [get_ports SPARE_SW0]
+set_property PACKAGE_PIN AA20 [get_ports SPARE_SW0]
+set_property IOSTANDARD LVCMOS33 [get_ports SPARE_SW0]
 #set_property PACKAGE_PIN AA21 [get_ports SPARE_SW1]
 #set_property IOSTANDARD LVCMOS33 [get_ports SPARE_SW1]
 set_property PACKAGE_PIN Y21 [get_ports SPARE_SW2]
