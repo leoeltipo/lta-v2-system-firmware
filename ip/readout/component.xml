@@ -234,11 +234,11 @@
       </xilinx:taxonomies>
       <xilinx:displayName>readout</xilinx:displayName>
       <xilinx:definitionSource>package_project</xilinx:definitionSource>
-      <xilinx:coreRevision>3</xilinx:coreRevision>
-      <xilinx:coreCreationDateTime>2018-11-07T20:53:03Z</xilinx:coreCreationDateTime>
+      <xilinx:coreRevision>4</xilinx:coreRevision>
+      <xilinx:coreCreationDateTime>2019-03-26T22:07:44Z</xilinx:coreCreationDateTime>
       <xilinx:tags>
         <xilinx:tag xilinx:name="fnal.gov:user:readout_1:1.0_ARCHIVE_LOCATION">c:/users/lstefana/desktop/lta-git/readout</xilinx:tag>
-        <xilinx:tag xilinx:name="fnal.gov:user:readout:1.0_ARCHIVE_LOCATION">c:/v18.2/lta-v1-system-firmware/ip/readout</xilinx:tag>
+        <xilinx:tag xilinx:name="fnal.gov:user:readout:1.0_ARCHIVE_LOCATION">c:/v18.2/lta-v2-system-firmware/ip/readout</xilinx:tag>
       </xilinx:tags>
     </xilinx:coreExtensions>
     <xilinx:packagingInfo>
