@@ -49,6 +49,18 @@ end cds_noncausal;
 
 architecture Behavioral of cds_noncausal is
 
+component synchronizer is 
+	generic (
+		N : Integer := 2
+	);
+	port (
+		rst		    : in std_logic;
+		clk 		: in std_logic;
+		data_in		: in std_logic;
+		data_out	: out std_logic
+	);
+end component;
+
 component accumulator_p is
     Port ( rst : in STD_LOGIC;
            clk : in STD_LOGIC;
@@ -75,12 +87,18 @@ component accumulator_s is
            SAMPLES_REG : in STD_LOGIC_VECTOR (15 downto 0));
 end component;
 
-signal p_r : std_logic;
-signal p_i : std_logic;
-signal p_m : std_logic;
-signal s_r : std_logic;
-signal s_i : std_logic;
-signal s_m : std_logic;
+signal p_resync : std_logic;
+signal p_r      : std_logic;
+signal p_i      : std_logic;
+signal p_m      : std_logic;
+signal s_resync : std_logic;
+signal s_r      : std_logic;
+signal s_i      : std_logic;
+signal s_m      : std_logic;
+
+signal dready_in_resync : std_logic;
+signal data_in_d        : std_logic_vector (data_in'length - 1 downto 0);
+signal data_in_dd       : std_logic_vector (data_in'length - 1 downto 0);
 
 signal dready_out_p : std_logic;
 signal dack_out_p : std_logic;
@@ -110,13 +128,46 @@ signal OUTSEL_REG_r : std_logic_vector (1 downto 0);
 
 begin
 
+p_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> p,
+		data_out	=> p_resync
+	);
+
+s_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> s,
+		data_out	=> s_resync
+	);
+
+dready_in_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> dready_in,
+		data_out	=> dready_in_resync
+	);
+	
 accumulator_p_i : accumulator_p
     Port map ( 
         rst             => rst,
         clk             => clk,
         p               => p_m,
-        dready_in       => dready_in,
-        data_in         => data_in,
+        dready_in       => dready_in_resync,
+        data_in         => data_in_dd,
         dready_out      => dready_out_p,
         dack_out        => dack_out_p,
         data_out        => data_out_p,
@@ -129,8 +180,8 @@ accumulator_s_i : accumulator_s
         rst             => rst,
         clk             => clk,
         s               => s_m,
-        dready_in       => dready_in,
-        data_in         => data_in,
+        dready_in       => dready_in_resync,
+        data_in         => data_in_dd,
         dready_out      => dready_out_s,
         dack_out        => dack_out_s,
         data_out        => data_out_s,
@@ -140,14 +191,14 @@ accumulator_s_i : accumulator_s
 
 -- p and s signals clocked to avoid integrating on "11" state.
 process (rst,clk)
-begin
+begin        
     if (rst = '1') then
         p_r <= '0';
         s_r <= '0';
         OUTSEL_REG_r <= (others => '0');
     elsif (clk'event and clk = '1') then
-        p_r <= p;
-        s_r <= s;
+        p_r <= p_resync;
+        s_r <= s_resync;
         OUTSEL_REG_r <= OUTSEL_REG;
     end if;    
 end process;
@@ -186,9 +237,13 @@ res <=  signed(data_out_p)  when ( OUTSEL_REG_r = "00" ) else
 process (rst,clk)
 begin
     if (rst = '1') then
-        current_state <= INIT;
+        data_in_d <= (others => '0');
+        data_in_dd <= (others => '0');
+        current_state <= INIT;        
         dout_r <= (others => '0');
     elsif (clk'event and clk = '1') then
+        data_in_d <= data_in;
+        data_in_dd <= data_in_d;
         current_state <= next_state;
         if (write_out_state = '1') then
             dout_r <= std_logic_vector(res);

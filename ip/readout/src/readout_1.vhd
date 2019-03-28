@@ -84,8 +84,34 @@ architecture Behavioral of readout_1 is
     
    type state_type is (s0, s1, s2, s3);
    signal present_state, next_state : state_type;
+   
+   signal acquire_resync : std_logic;
+   
+   component synchronizer is 
+       generic (
+           N : Integer := 2
+       );
+       port (
+           rst            : in std_logic;
+           clk         : in std_logic;
+           data_in        : in std_logic;
+           data_out    : out std_logic
+       );
+   end component;
 
 begin
+
+   -- acquire_resync.
+   acquire_resync_i : synchronizer 
+       generic map (
+           N => 2
+       )
+       port map (
+           rst      => master_reset,
+           clk      => clk_1,
+           data_in  => acquire,
+           data_out => acquire_resync
+       );
 
     sio_clk_enable <= clk_enable;
 	adc_readout <= readout;
@@ -144,13 +170,13 @@ begin
       end if;
    end process;
 
-   NEXT_STATE_DECODE: process (present_state, acquire, convert_pending,
+   NEXT_STATE_DECODE: process (present_state, acquire_resync, convert_pending,
                     align_with_divclk,start_the_readout, readout_done)
    begin
       next_state <= present_state;
       case (present_state) is
          when s0 =>						      -- power-up, reset state, idle
-			if (acquire and convert_pending) = '1' then         -- signal to start readout
+			if (acquire_resync and convert_pending) = '1' then         -- signal to start readout
                next_state <= s1;	
 			else
                next_state <= s0;

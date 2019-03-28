@@ -90,6 +90,34 @@ end raw_capture;
 
 architecture Behavioral of raw_capture is
 
+component synchronizer is 
+	generic (
+		N : Integer := 2
+	);
+	port (
+		rst		    : in std_logic;
+		clk 		: in std_logic;
+		data_in		: in std_logic;
+		data_out	: out std_logic
+	);
+end component;
+
+-- Re-sync signals.
+signal capture_en_resync    : std_logic;
+signal ready_in_a_resync    : std_logic;
+signal ready_in_b_resync    : std_logic;
+signal ready_in_c_resync    : std_logic;
+signal ready_in_d_resync    : std_logic;
+signal data_in_a_d          : std_logic_vector (data_in_a'length - 1 downto 0);
+signal data_in_a_dd         : std_logic_vector (data_in_a'length - 1 downto 0);
+signal data_in_b_d          : std_logic_vector (data_in_b'length - 1 downto 0);
+signal data_in_b_dd         : std_logic_vector (data_in_b'length - 1 downto 0);
+signal data_in_c_d          : std_logic_vector (data_in_c'length - 1 downto 0);
+signal data_in_c_dd         : std_logic_vector (data_in_c'length - 1 downto 0);
+signal data_in_d_d          : std_logic_vector (data_in_d'length - 1 downto 0);
+signal data_in_d_dd         : std_logic_vector (data_in_d'length - 1 downto 0);
+signal header_resync        : std_logic_vector (1 downto 0);
+
 -- Constants.
 constant BUF_SIZE_1 : integer := 2**N;
 constant BUF_SIZE_2 : integer := BUF_SIZE_1/2;
@@ -147,21 +175,105 @@ signal eoc_i    : std_logic;
 
 begin
 
+-- capture_en_resync.
+capture_en_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> capture_en,
+		data_out	=> capture_en_resync
+	);
+	
+-- ready_in_a_resync.
+ready_in_a_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> ready_in_a,
+		data_out	=> ready_in_a_resync
+	);
+	
+-- ready_in_b_resync.
+ready_in_b_resync_i : synchronizer 
+	generic map (
+		N => 2
+	)
+	port map (
+		rst		    => rst,
+		clk 		=> clk,
+		data_in		=> ready_in_b,
+		data_out	=> ready_in_b_resync
+	);
+		
+-- ready_in_c_resync.
+ready_in_c_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst,
+        clk         => clk,
+        data_in     => ready_in_c,
+        data_out    => ready_in_c_resync
+    );
+        	
+-- ready_in_d_resync.
+ready_in_d_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst,
+        clk         => clk,
+        data_in     => ready_in_d,
+        data_out    => ready_in_d_resync
+    );    	
+        	
+-- header_0_resync.
+header_0_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst,
+        clk         => clk,
+        data_in     => header(0),
+        data_out    => header_resync(0)
+    );  
+    
+-- header_1_resync.
+header_1_resync_i : synchronizer 
+    generic map (
+        N => 2
+    )
+    port map (
+        rst         => rst,
+        clk         => clk,
+        data_in     => header(1),
+        data_out    => header_resync(1)
+    );  
+    
 -- Muxes for channel selection.
-ready_in <=     ready_in_a  when CH_SEL_REG_r = "00" else
-                ready_in_b  when CH_SEL_REG_r = "01" else
-                ready_in_c  when CH_SEL_REG_r = "10" else
-                ready_in_d  when CH_SEL_REG_r = "11" else
-                ready_in_a;
+ready_in <=     ready_in_a_resync  when CH_SEL_REG_r = "00" else
+                ready_in_b_resync  when CH_SEL_REG_r = "01" else
+                ready_in_c_resync  when CH_SEL_REG_r = "10" else
+                ready_in_d_resync  when CH_SEL_REG_r = "11" else
+                ready_in_a_resync;
                 
-data_in <=      header & data_in_a  when CH_SEL_REG_r = "00" else
-                header & data_in_b  when CH_SEL_REG_r = "01" else
-                header & data_in_c  when CH_SEL_REG_r = "10" else
-                header & data_in_d  when CH_SEL_REG_r = "11" else
-                header & data_in_a;   
+data_in <=      header_resync & data_in_a_dd  when CH_SEL_REG_r = "00" else
+                header_resync & data_in_b_dd  when CH_SEL_REG_r = "01" else
+                header_resync & data_in_c_dd  when CH_SEL_REG_r = "10" else
+                header_resync & data_in_d_dd  when CH_SEL_REG_r = "11" else
+                header_resync & data_in_a_dd;   
 
 -- Mux for capture_en.
-capture_en_i <= capture_en when CAPTURE_EN_SRC_REG_r = '0' else
+capture_en_i <= capture_en_resync when CAPTURE_EN_SRC_REG_r = '0' else
                 '1';
                 
 -- Maximum number of samples.
@@ -173,6 +285,16 @@ max_nsamp <=    to_unsigned(BUF_SIZE_1,max_nsamp'length) when CH_MODE_REG_r = "0
 process (rst, clk)
 begin
     if (rst = '1') then
+        -- 2x clk to account for pipe on re-sync.
+        data_in_a_d     <= (others => '0');
+        data_in_a_dd    <= (others => '0');
+        data_in_b_d     <= (others => '0');
+        data_in_b_dd    <= (others => '0');
+        data_in_c_d     <= (others => '0');
+        data_in_c_dd    <= (others => '0');
+        data_in_d_d     <= (others => '0');
+        data_in_d_dd    <= (others => '0');                
+                
         -- Registers.
         CH_SEL_REG_r            <= (others => '0');
         CH_NSAMP_REG_r          <= (others => '0');    
@@ -196,6 +318,16 @@ begin
         data_in_r <= (others => '0');          
 
     elsif (rising_edge(clk)) then
+        -- 2x clk to account for pipe on re-sync.
+        data_in_a_d     <= data_in_a;
+        data_in_a_dd    <= data_in_a_d;
+        data_in_b_d     <= data_in_b;
+        data_in_b_dd    <= data_in_b_d;
+        data_in_c_d     <= data_in_c;
+        data_in_c_dd    <= data_in_c_d;
+        data_in_d_d     <= data_in_d;
+        data_in_d_dd    <= data_in_d_d;          
+    
         -- Registers.
         CH_SEL_REG_r            <= CH_SEL_REG;
         CH_NSAMP_REG_r          <= CH_NSAMP_REG;    

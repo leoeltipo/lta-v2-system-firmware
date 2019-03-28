@@ -88,7 +88,59 @@ architecture Behavioral of bitslip_1 is
     signal sm_bitslip_done_i : std_logic := '0';
 --	signal bitslip_debug : std_logic_vector(2 downto 0) := b"00";
 
+   signal send_bitslip_0_resync      : std_logic;
+   signal send_bitslip_1_resync      : std_logic;
+   signal enable_test_pattern_resync : std_logic;
+   
+   component synchronizer is 
+       generic (
+           N : Integer := 2
+       );
+       port (
+           rst            : in std_logic;
+           clk         : in std_logic;
+           data_in        : in std_logic;
+           data_out    : out std_logic
+       );
+   end component;
+
 begin
+
+   -- send_bitslip_0_resync.
+   send_bitslip_0_resync_i : synchronizer 
+       generic map (
+           N => 2
+       )
+       port map (
+           rst      => master_reset,
+           clk      => clk_1,
+           data_in  => send_bitslip_0,
+           data_out => send_bitslip_0_resync
+       );
+       
+   -- send_bitslip_1_resync.
+   send_bitslip_1_resync_i : synchronizer 
+       generic map (
+           N => 2
+       )
+       port map (
+           rst      => master_reset,
+           clk      => clk_1,
+           data_in  => send_bitslip_1,
+           data_out => send_bitslip_1_resync
+       );       
+
+   -- enable_test_pattern_resync.
+   enable_test_pattern_resync_i : synchronizer 
+       generic map (
+           N => 2
+       )
+       port map (
+           rst      => master_reset,
+           clk      => clk_1,
+           data_in  => enable_test_pattern,
+           data_out => enable_test_pattern_resync
+       );       
 
 --	-- for debugging, perform only one bitslip each time the VIO send bitslip is toggled from 0 to 1 
 --	process (clk_1, send_bitslip)
@@ -100,7 +152,7 @@ begin
 --		send_bitslip <= bitslip_debug(0) and not bitslip_debug(1);
 --	end process;
 
-    send_bitslip <= send_bitslip_0 or send_bitslip_1; -- so far, don't need individual bitslip per lane option
+    send_bitslip <= send_bitslip_0_resync or send_bitslip_1_resync; -- so far, don't need individual bitslip per lane option
 
    SYNC_PROC: process (clk_1)
    begin
@@ -302,7 +354,7 @@ begin
 	process(clk_1, test_pattern_current, test_pattern_expected)
 	begin
 		if (clk_1'event and clk_1 ='1') then
-			if (enable_test_pattern and start_check) = '1' then
+			if (enable_test_pattern_resync and start_check) = '1' then
 				if (test_pattern_current = test_pattern_expected) then
                     test_pattern_error <= '0';
 				elsif (test_pattern_current /= test_pattern_expected) then

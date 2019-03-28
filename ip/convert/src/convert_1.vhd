@@ -75,8 +75,34 @@ architecture Behavioral of convert_1 is
     attribute dont_touch of clk3_rising : signal is "true";
     signal track_clk : std_logic_vector(8 downto 0) := b"000000000";
     attribute dont_touch of track_clk : signal is "true";
+    
+   signal acquire_resync : std_logic;
+    
+    component synchronizer is 
+        generic (
+            N : Integer := 2
+        );
+        port (
+            rst            : in std_logic;
+            clk         : in std_logic;
+            data_in        : in std_logic;
+            data_out    : out std_logic
+        );
+    end component;    
 
 begin
+
+   -- acquire_resync.
+   acquire_resync_i : synchronizer 
+       generic map (
+           N => 2
+       )
+       port map (
+           rst      => master_reset,
+           clk      => clk_1,
+           data_in  => acquire,
+           data_out => acquire_resync
+       );
 
     adc_convert <= sm_adc_convert;
 
@@ -133,13 +159,13 @@ begin
       end if;
    end process;
 
-   NEXT_STATE_DECODE: process (present_state, acquire, send_the_convert,
+   NEXT_STATE_DECODE: process (present_state, acquire_resync, send_the_convert,
                                 convert_pending, convert_count_done)
    begin
       next_state <= present_state;
       case (present_state) is
          when s0 =>						      -- power-up and reset state
-			if not acquire = '1' then         -- signal to start readout
+			if not acquire_resync = '1' then         -- signal to start readout
                next_state <= s0;
 			else
                next_state <= s1;

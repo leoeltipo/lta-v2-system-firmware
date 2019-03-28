@@ -1,7 +1,7 @@
 --Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 ----------------------------------------------------------------------------------
 --Tool Version: Vivado v.2018.2 (win64) Build 2258646 Thu Jun 14 20:03:12 MDT 2018
---Date        : Wed Nov  7 15:08:21 2018
+--Date        : Wed Mar 27 16:25:39 2019
 --Host        : L-LWL-120289 running 64-bit major release  (build 9200)
 --Command     : generate_target sio1_2.bd
 --Design      : sio1_2
@@ -34,44 +34,6 @@ entity sio1_2 is
 end sio1_2;
 
 architecture STRUCTURE of sio1_2 is
-  component sio1_2_bitslip_0_0 is
-  port (
-    master_reset : in STD_LOGIC;
-    clk_1 : in STD_LOGIC;
-    clk_3 : in STD_LOGIC;
-    send_bitslip_0 : in STD_LOGIC;
-    send_bitslip_1 : in STD_LOGIC;
-    enable_test_pattern : in STD_LOGIC;
-    check_test_pattern : in STD_LOGIC;
-    sio_wiz_data_in : in STD_LOGIC_VECTOR ( 19 downto 0 );
-    sio_wiz_bitslip : out STD_LOGIC_VECTOR ( 1 downto 0 );
-    sio_wiz_data_out : out STD_LOGIC_VECTOR ( 17 downto 0 )
-  );
-  end component sio1_2_bitslip_0_0;
-  component sio1_2_convert_0_0 is
-  port (
-    master_reset : in STD_LOGIC;
-    clk_1 : in STD_LOGIC;
-    clk_3 : in STD_LOGIC;
-    acquire : in STD_LOGIC;
-    readout_cycle : in STD_LOGIC;
-    adc_convert : out STD_LOGIC;
-    convert_done : out STD_LOGIC
-  );
-  end component sio1_2_convert_0_0;
-  component sio1_2_readout_0_0 is
-  port (
-    master_reset : in STD_LOGIC;
-    clk_1 : in STD_LOGIC;
-    clk_3 : in STD_LOGIC;
-    acquire : in STD_LOGIC;
-    convert_done : in STD_LOGIC;
-    adc_readout : out STD_LOGIC;
-    sio_clk_enable : out STD_LOGIC;
-    sio_wiz_dstrobe : out STD_LOGIC;
-    clk_5_ce : out STD_LOGIC
-  );
-  end component sio1_2_readout_0_0;
   component sio1_2_axis_clock_converter_0_0 is
   port (
     s_axis_aresetn : in STD_LOGIC;
@@ -86,17 +48,42 @@ architecture STRUCTURE of sio1_2 is
     m_axis_tdata : out STD_LOGIC_VECTOR ( 23 downto 0 )
   );
   end component sio1_2_axis_clock_converter_0_0;
+  component sio1_2_bitslip_0_0 is
+  port (
+    master_reset : in STD_LOGIC;
+    clk_1 : in STD_LOGIC;
+    clk_3 : in STD_LOGIC;
+    send_bitslip_0 : in STD_LOGIC;
+    send_bitslip_1 : in STD_LOGIC;
+    enable_test_pattern : in STD_LOGIC;
+    check_test_pattern : in STD_LOGIC;
+    sio_wiz_data_in : in STD_LOGIC_VECTOR ( 19 downto 0 );
+    sio_wiz_bitslip : out STD_LOGIC_VECTOR ( 1 downto 0 );
+    sio_wiz_data_out : out STD_LOGIC_VECTOR ( 17 downto 0 )
+  );
+  end component sio1_2_bitslip_0_0;
   component sio1_2_clk_wiz_0_0 is
   port (
     reset : in STD_LOGIC;
     clk_in1 : in STD_LOGIC;
     clk_out1 : out STD_LOGIC;
+    locked : out STD_LOGIC;
     clk_out2 : out STD_LOGIC;
     clk_out3 : out STD_LOGIC;
-    locked : out STD_LOGIC;
     clk_out2_ce : in STD_LOGIC
   );
   end component sio1_2_clk_wiz_0_0;
+  component sio1_2_convert_0_0 is
+  port (
+    master_reset : in STD_LOGIC;
+    clk_1 : in STD_LOGIC;
+    clk_3 : in STD_LOGIC;
+    acquire : in STD_LOGIC;
+    readout_cycle : in STD_LOGIC;
+    adc_convert : out STD_LOGIC;
+    convert_done : out STD_LOGIC
+  );
+  end component sio1_2_convert_0_0;
   component sio1_2_proc_sys_reset_0_0 is
   port (
     slowest_sync_clk : in STD_LOGIC;
@@ -125,6 +112,19 @@ architecture STRUCTURE of sio1_2 is
     peripheral_aresetn : out STD_LOGIC_VECTOR ( 0 to 0 )
   );
   end component sio1_2_proc_sys_reset_1_0;
+  component sio1_2_readout_0_0 is
+  port (
+    master_reset : in STD_LOGIC;
+    clk_1 : in STD_LOGIC;
+    clk_3 : in STD_LOGIC;
+    acquire : in STD_LOGIC;
+    convert_done : in STD_LOGIC;
+    adc_readout : out STD_LOGIC;
+    sio_clk_enable : out STD_LOGIC;
+    sio_wiz_dstrobe : out STD_LOGIC;
+    clk_5_ce : out STD_LOGIC
+  );
+  end component sio1_2_readout_0_0;
   component sio1_2_selectio_wiz_0_0 is
   port (
     data_in_from_pins_p : in STD_LOGIC_VECTOR ( 1 downto 0 );
